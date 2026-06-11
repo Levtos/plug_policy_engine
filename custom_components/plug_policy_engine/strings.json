@@ -3,7 +3,7 @@
     "step": {
       "module_step": {
         "title": "Plug Policy Engine",
-        "description": "Global selectors. Devices are added via the options menu after setup.",
+        "description": "Global selectors. Existing profile entities are prefilled when available. Devices are added via the options menu after setup.",
         "data": {
           "presence_entity": "Presence (zuhause / abwesend / bei_eltern)",
           "bio_entity": "Bio state (awake / sleep)",
@@ -26,18 +26,27 @@
         "title": "Plug Policy Engine",
         "menu_options": {
           "globals": "Edit global selectors",
+          "prefill_devices": "Prefill profile devices",
           "add_device": "Add device",
           "edit_device": "Edit device",
           "remove_device": "Remove device"
         }
       },
       "globals": { "title": "Global selectors" },
+      "prefill_devices": {
+        "title": "Prefill profile devices",
+        "description": "Add {count} detected profile devices: {devices}"
+      },
       "device_basics": { "title": "Device basics" },
       "device_sensors": { "title": "Device sensors" },
       "device_advanced": { "title": "Device policy" },
       "edit_device": { "title": "Edit device" },
       "remove_device": { "title": "Remove device" }
     },
-    "abort": { "no_devices": "No devices configured yet." }
+    "abort": {
+      "no_devices": "No devices configured yet.",
+      "no_prefill_devices": "No new profile devices were detected.",
+      "prefill_cancelled": "Profile device prefill was cancelled."
+    }
   }
 }

@@ -29,6 +29,17 @@ class SensorSuggestion:
     siblings: tuple[str, ...]  # voltage/current/energy if present (informational)
 
 
+@dataclass(frozen=True)
+class ProfileDevice:
+    """One profile-specific device prefill candidate."""
+
+    name: str
+    switch_entity: str
+    policy: str
+    kind: str
+    values: dict
+
+
 # Priority is significant — Einhornzentrale wires every plug through an
 # `_atomic` aggregator entity that smooths the raw power reading, so we
 # prefer that over the underlying raw sensor. Battery follows the same
@@ -58,8 +69,8 @@ def base_slug(switch_entity: str | None) -> str | None:
     return s.split(".", 1)[1] if "." in s else s
 
 
-def _entity_ids(hass) -> list[str]:
-    """Return all sensor entity_ids known to HA.
+def _entity_ids(hass, domain: str | None = "sensor") -> list[str]:
+    """Return entity_ids known to HA, optionally limited to one domain.
 
     Falls back to an empty list if hass exposes no states API (tests).
     """
@@ -70,13 +81,27 @@ def _entity_ids(hass) -> list[str]:
     aei = getattr(states, "async_entity_ids", None)
     if callable(aei):
         try:
-            return list(aei("sensor"))
+            return list(aei(domain)) if domain is not None else list(aei())
         except TypeError:
-            return [eid for eid in aei() if eid.startswith("sensor.")]
+            all_ids = list(aei())
+            if domain is None:
+                return all_ids
+            return [eid for eid in all_ids if eid.startswith(f"{domain}.")]
     listing = getattr(states, "async_all", None)
     if callable(listing):
-        return [s.entity_id for s in listing() if s.entity_id.startswith("sensor.")]
+        all_ids = [s.entity_id for s in listing()]
+        if domain is None:
+            return all_ids
+        return [eid for eid in all_ids if eid.startswith(f"{domain}.")]
     return []
+
+
+def _has_entity(hass, entity_id: str | None) -> bool:
+    """Return True when an entity_id is known to HA."""
+    if not entity_id:
+        return False
+    domain = entity_id.split(".", 1)[0] if "." in entity_id else None
+    return entity_id in _entity_ids(hass, domain)
 
 
 def _first_match(candidates: list[str], slug: str, suffixes: tuple[str, ...]) -> str | None:
@@ -122,6 +147,61 @@ def suggest_for_switch(hass, switch_entity: str | None) -> SensorSuggestion:
         battery_entity=battery,
         siblings=tuple(siblings),
     )
+
+
+# ---------------------------------------------------------------------------
+# Profile/entity prefill.
+#
+# These are profile defaults, not hard runtime dependencies. The flow filters
+# every candidate against hass.states before applying it, so the same code can
+# run on Eltern or vanilla HA without storing dead entity IDs.
+# ---------------------------------------------------------------------------
+
+
+_PROFILE_GLOBALS: dict[str, dict[str, tuple[str, ...]]] = {
+    "benni": {
+        "presence_entity": (
+            "sensor.benni_core_state_presence_personal",
+            "sensor.benni_core_presence_personal",
+        ),
+        "bio_entity": (
+            "sensor.benni_core_state_bio_state",
+            "sensor.benni_core_user_bio_state",
+        ),
+        "day_entity": (
+            "sensor.benni_core_state_day_state",
+            "sensor.benni_core_day_state",
+        ),
+        "media_context_entity": (
+            "sensor.benni_media_state_media_context",
+            "sensor.benni_media_context_media_context",
+        ),
+        "entertainment_active_entity": (
+            "binary_sensor.benni_media_state_entertainment_active",
+            "binary_sensor.benni_media_context_entertainment_active",
+        ),
+        "activity_entity": (
+            "sensor.benni_core_state_activity_state",
+            "sensor.context_activity_state_combined",
+            "sensor.benni_context_activity_state",
+        ),
+    },
+}
+
+
+def profile_global_prefill(hass, profile: str = "benni") -> dict:
+    """Return existing global selector defaults for a profile.
+
+    Preference order is significant: standalone/profile-aware integrations win
+    over legacy umbrella entities.
+    """
+    out: dict = {}
+    for key, candidates in _PROFILE_GLOBALS.get(profile, {}).items():
+        for entity_id in candidates:
+            if _has_entity(hass, entity_id):
+                out[key] = entity_id
+                break
+    return out
 
 
 # ---------------------------------------------------------------------------
@@ -287,6 +367,34 @@ _PRESETS: dict[str, DevicePreset] = {
             "wake_signal_only": False,
         },
     ),
+    "living_denon_plug_denon": DevicePreset(
+        slug="living_denon_plug_denon",
+        label="Denon AVR safe defaults",
+        values={
+            "kind": "denon",
+            "active_threshold": 8.0,
+            "idle_threshold": 3.0,
+            "deadband_lower": 3.0,
+            "deadband_upper": 8.0,
+            "unknown_behavior": "assume_active",
+            "never_cut_when_active": True,
+            "wake_signal_only": False,
+        },
+    ),
+    "wohnbereich_steckdose_tv": DevicePreset(
+        slug="wohnbereich_steckdose_tv",
+        label="TV safe defaults",
+        values={
+            "kind": "generic",
+            "active_threshold": 8.0,
+            "idle_threshold": 3.0,
+            "deadband_lower": 3.0,
+            "deadband_upper": 8.0,
+            "unknown_behavior": "assume_active",
+            "never_cut_when_active": True,
+            "wake_signal_only": False,
+        },
+    ),
     "kitchen_coffee_machine_plug": DevicePreset(
         slug="kitchen_coffee_machine_plug",
         label="Coffee machine safe defaults",
@@ -350,3 +458,134 @@ def preset_for_switch(switch_entity: str | None) -> DevicePreset | None:
     if not slug:
         return None
     return _PRESETS.get(slug)
+
+
+_PROFILE_DEVICES: dict[str, tuple[ProfileDevice, ...]] = {
+    "benni": (
+        ProfileDevice(
+            name="PC",
+            switch_entity="switch.living_pc_plug",
+            policy="HB",
+            kind="pc",
+            values={},
+        ),
+        ProfileDevice(
+            name="Denon AVR",
+            switch_entity="switch.living_denon_plug_denon",
+            policy="HB",
+            kind="denon",
+            values={"power_entity": "sensor.living_denon_plug_power_atomic"},
+        ),
+        ProfileDevice(
+            name="H14 Pro Dock",
+            switch_entity="switch.hall_h14_pro_plug",
+            policy="HB",
+            kind="h14_dock",
+            values={
+                "power_entity": "sensor.hall_h14_pro_plug_power",
+                "active_threshold": 10.0,
+                "idle_threshold": 5.0,
+                "deadband_lower": 5.0,
+                "deadband_upper": 10.0,
+                "unknown_behavior": "assume_active",
+                "never_cut_when_active": True,
+                "wake_signal_only": False,
+            },
+        ),
+        ProfileDevice(
+            name="Waschmaschine",
+            switch_entity="switch.kitchen_washing_machine_plug",
+            policy="AC",
+            kind="appliance",
+            values={},
+        ),
+        ProfileDevice(
+            name="Trockner",
+            switch_entity="switch.kitchen_dryer_plug",
+            policy="AC",
+            kind="appliance",
+            values={},
+        ),
+        ProfileDevice(
+            name="Spuelmaschine",
+            switch_entity="switch.kitchen_dishwasher_plug",
+            policy="AC",
+            kind="appliance",
+            values={},
+        ),
+        ProfileDevice(
+            name="Kaffeevollautomat",
+            switch_entity="switch.kitchen_coffee_machine_plug",
+            policy="AO",
+            kind="coffee_maker",
+            values={},
+        ),
+        ProfileDevice(
+            name="Duftstecker Kueche",
+            switch_entity="switch.kitchen_diffuser_plug",
+            policy="SC",
+            kind="diffuser",
+            values={"allowed_contexts": ["morning", "day", "evening"]},
+        ),
+        ProfileDevice(
+            name="Bias Light",
+            switch_entity="switch.living_bias_light_plug",
+            policy="SPECIAL",
+            kind="bias_light",
+            values={},
+        ),
+        ProfileDevice(
+            name="PS5",
+            switch_entity="switch.living_ps5_plug",
+            policy="AO",
+            kind="generic",
+            values={},
+        ),
+        ProfileDevice(
+            name="Nintendo Switch",
+            switch_entity="switch.living_switch_plug",
+            policy="AO",
+            kind="generic",
+            values={},
+        ),
+        ProfileDevice(
+            name="OLED TV",
+            switch_entity="switch.wohnbereich_steckdose_tv",
+            policy="AO",
+            kind="generic",
+            values={"power_entity": "sensor.living_tv_plug_power_atomic"},
+        ),
+    ),
+}
+
+
+def profile_device_prefill(hass, profile: str = "benni") -> list[dict]:
+    """Return existing profile devices ready to store in the config entry."""
+    devices: list[dict] = []
+    for item in _PROFILE_DEVICES.get(profile, ()):
+        if not _has_entity(hass, item.switch_entity):
+            continue
+        slug = base_slug(item.switch_entity) or item.switch_entity.replace(".", "_")
+        device: dict = {
+            "device_id": slug,
+            "name": item.name,
+            "switch_entity": item.switch_entity,
+            "policy": item.policy,
+            "kind": item.kind,
+        }
+        preset = preset_for_switch(item.switch_entity)
+        if preset is not None:
+            device.update(preset.values)
+        device.update(item.values)
+
+        suggestion = suggest_for_switch(hass, item.switch_entity)
+        if "power_entity" not in device and suggestion.power_entity:
+            device["power_entity"] = suggestion.power_entity
+        if "battery_entity" not in device and suggestion.battery_entity:
+            device["battery_entity"] = suggestion.battery_entity
+
+        for key in ("power_entity", "battery_entity"):
+            if key in device and not _has_entity(hass, device.get(key)):
+                device.pop(key)
+        devices.append(device)
+    return devices
