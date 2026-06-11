@@ -85,10 +85,42 @@ def test_hb_does_not_cut_when_at_parents():
 
 
 def test_ac_cuts_when_truly_away_idle():
-    cfg = _cfg(policy=C.POLICY_AC, power_entity="sensor.p", idle_threshold=2.0)
+    cfg = _cfg(
+        policy=C.POLICY_AC,
+        power_entity="sensor.p",
+        idle_threshold=2.0,
+        stable_off_seconds=0,
+    )
     st = _state(switch_state="on", power_w=0.0)
     d = E.evaluate(cfg, st, _ctx(presence=C.PRESENCE_AWAY))
     assert d.desired_switch_state == C.DESIRED_OFF
+
+
+def test_ac_waits_for_stable_off_before_cut():
+    cfg = _cfg(
+        policy=C.POLICY_AC,
+        power_entity="sensor.p",
+        idle_threshold=2.0,
+        stable_off_seconds=300,
+    )
+    st = _state(switch_state="on", power_w=0.0, last_idle_since_ts=1000.0)
+    d = E.evaluate(cfg, st, _ctx(presence=C.PRESENCE_AWAY, now_ts=1120.0))
+    assert d.desired_switch_state == C.DESIRED_KEEP
+    assert d.stable_off_remaining_s == 180
+    assert "stable_off" in d.blockers
+
+
+def test_ac_cuts_after_stable_off_elapsed():
+    cfg = _cfg(
+        policy=C.POLICY_AC,
+        power_entity="sensor.p",
+        idle_threshold=2.0,
+        stable_off_seconds=300,
+    )
+    st = _state(switch_state="on", power_w=0.0, last_idle_since_ts=1000.0)
+    d = E.evaluate(cfg, st, _ctx(presence=C.PRESENCE_AWAY, now_ts=1300.0))
+    assert d.desired_switch_state == C.DESIRED_OFF
+    assert d.stable_off_remaining_s == 0
 
 
 # --------------------------------------------------------------- SC
@@ -135,7 +167,8 @@ def test_pc_protected_when_active():
 
 def test_pc_cut_when_sleeping_and_idle():
     cfg = _cfg(kind=C.KIND_PC, policy=C.POLICY_HB,
-               power_entity="sensor.p", idle_threshold=2.0)
+               power_entity="sensor.p", idle_threshold=2.0,
+               stable_off_seconds=0)
     st = _state(switch_state="on", power_w=0.0)
     d = E.evaluate(cfg, st, _ctx(presence=C.PRESENCE_HOME, bio=C.BIO_SLEEP))
     assert d.desired_switch_state == C.DESIRED_OFF
@@ -186,7 +219,8 @@ def test_appliance_idle_and_away_keeps_under_hb():
 def test_appliance_idle_and_away_cuts_under_ac():
     cfg = _cfg(kind=C.KIND_APPLIANCE, policy=C.POLICY_AC,
                power_entity="sensor.p", idle_threshold=2.0,
-               unknown_behavior=C.UNK_ASSUME_IDLE)
+               unknown_behavior=C.UNK_ASSUME_IDLE,
+               stable_off_seconds=0)
     st = _state(switch_state="on", power_w=0.0)
     d = E.evaluate(cfg, st, _ctx(presence=C.PRESENCE_AWAY))
     assert d.desired_switch_state == C.DESIRED_OFF

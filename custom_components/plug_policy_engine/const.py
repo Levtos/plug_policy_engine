@@ -9,6 +9,7 @@ NAME = "Plug Policy Engine"
 
 DATA_ENTRIES: Final[str] = "entries"
 DATA_SERVICES_REGISTERED: Final[str] = "services_registered"
+DATA_WS_REGISTERED: Final[str] = "ws_registered"
 
 # Kept in ConfigEntry.data so entries migrated from the umbrella module remain
 # inspectable with the same marker key.
@@ -114,9 +115,19 @@ DEFAULT_IDLE_THRESHOLD = 2.0
 # Services
 SERVICE_FORCE_EVAL = "force_evaluate"
 SERVICE_APPLY_NOW = "apply_policy_now"
+SERVICE_SET_ENABLE_CONTROL = "set_enable_control"
 SERVICE_SUSPEND = "suspend_device_policy"
 SERVICE_RESUME = "resume_device_policy"
 SERVICE_MARK_MANUAL = "set_manual_recently_on"
+
+# WebSocket + sidebar panel
+WS_GET_STATUS: Final[str] = "plug_policy_engine/get_status"
+FRONTEND_DIR_URL: Final[str] = "/plug_policy_engine_static"
+FRONTEND_ENTRY: Final[str] = f"{FRONTEND_DIR_URL}/main.js"
+PANEL_ELEMENT: Final[str] = "plug-policy-panel"
+PANEL_ICON: Final[str] = "mdi:power-plug-outline"
+PANEL_TITLE: Final[str] = "Plug Policy"
+PANEL_URL_PATH: Final[str] = "plug-policy"
 
 
 def storage_key(_module_id: str, suffix: str) -> str:

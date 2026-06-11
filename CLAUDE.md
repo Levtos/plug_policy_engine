@@ -1,0 +1,46 @@
+# CLAUDE.md - Plug Policy
+
+**Status:** Eigenständige HACS-Integration fuer `plug_policy_engine`.
+**Domain-Slug:** `plug_policy_engine` bleibt absichtlich stabil, obwohl das Repo
+im benni_*-Oekosystem lebt. Eine Umbenennung wuerde Config Entries, Entities,
+Services und Dashboard-Links brechen.
+**Letzte Aktualisierung:** 2026-06-11
+
+---
+
+## Was ist dieses Modul
+
+Steckdosen-Policy: entscheidet pro konfiguriertem Plug basierend auf Presence,
+Bio, Tagesphase, Media-Context und Geraetezustand, ob die Steckdose geschuetzt,
+eingeschaltet, ausgeschaltet oder nur beobachtet wird. Die pure Decision-Engine
+bleibt HA-frei; der Coordinator liest HA-States, fuehrt optional Schaltbefehle aus
+und stellt Observability ueber Sensoren, WebSocket und Panel bereit.
+
+**Lastenheft:** `einhornzentrale/docs/lastenhefte/reviewed/steckdosen/`
+
+## Architektur-Kontext
+
+Eigene HACS-Custom-Integration. Foundation lebt in `bennis_toolbox`, dieses Modul wird eigenständig. Konsumiert die 3 Herzen als HA-Entities.
+
+**Pendant-Briefings:**
+- `bennis_toolbox/CLAUDE.md` — Foundation + Pattern
+- `einhornzentrale/CLAUDE.md` — YAML + Cut-Over-Status
+- `einhornzentrale/docs/roadmap.md` — Phase 2 (Pivot)
+
+## Aktueller Stand
+
+- Eigenstaendige HACS-Integration mit Config-Flow und Options-Flow.
+- `enable_control` defaultet auf Shadow: Entscheidungen werden angezeigt, aber
+  erst bei aktivem Gate als `switch.turn_on/off` angewendet.
+- Observability-Panel unter `plug-policy` mit WebSocket-Contract
+  `plug_policy_engine/get_status`.
+- Stable-Off ist verdrahtet: idle-basierte Cuts warten auf
+  `stable_off_seconds` und exponieren `stable_off_remaining_s`.
+
+## Arbeitsregeln
+
+- Engine-Entscheidungslogik nur gezielt erweitern; HA-Zugriffe gehoeren in den
+  Coordinator.
+- Cross-Modul-Inputs immer als HA-Entity-IDs konsumieren, keine Python-Imports
+  aus anderen benni-Modulen.
+- Keine Domain-Umbenennung von `plug_policy_engine`.

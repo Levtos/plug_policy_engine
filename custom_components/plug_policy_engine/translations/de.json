@@ -1,0 +1,64 @@
+{
+  "config": {
+    "step": {
+      "module_step": {
+        "title": "Plug Policy Engine",
+        "description": "Globale Selektoren. Vorhandene Profil-Entities werden vorausgefüllt, wenn sie gefunden werden. Geräte werden anschließend über die Optionen hinzugefügt.",
+        "data": {
+          "presence_entity": "Anwesenheit (zuhause / abwesend / bei_eltern)",
+          "bio_entity": "Bio-Status (awake / sleep)",
+          "day_entity": "Tagesphase",
+          "media_context_entity": "Medien-Kontext",
+          "entertainment_active_entity": "Entertainment aktiv",
+          "activity_entity": "Aktivität (optional)",
+          "enable_control": "Integration darf Steckdosen schalten",
+          "scan_interval": "Scan-Intervall (s)"
+        }
+      }
+    },
+    "abort": {
+      "already_configured": "Nur eine Instanz dieser Integration ist erlaubt."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Plug Policy Engine",
+        "menu_options": {
+          "globals": "Globale Selektoren bearbeiten",
+          "prefill_devices": "Profilgeräte vorausfüllen",
+          "add_device": "Gerät hinzufügen",
+          "edit_device": "Gerät bearbeiten",
+          "remove_device": "Gerät entfernen"
+        }
+      },
+      "globals": {
+        "title": "Globale Selektoren"
+      },
+      "prefill_devices": {
+        "title": "Profilgeräte vorausfüllen",
+        "description": "{count} erkannte Profilgeräte hinzufügen: {devices}"
+      },
+      "device_basics": {
+        "title": "Geräte-Basisdaten"
+      },
+      "device_sensors": {
+        "title": "Geräte-Sensoren"
+      },
+      "device_advanced": {
+        "title": "Geräte-Policy"
+      },
+      "edit_device": {
+        "title": "Gerät bearbeiten"
+      },
+      "remove_device": {
+        "title": "Gerät entfernen"
+      }
+    },
+    "abort": {
+      "no_devices": "Es sind noch keine Geräte konfiguriert.",
+      "no_prefill_devices": "Es wurden keine neuen Profilgeräte erkannt.",
+      "prefill_cancelled": "Das Vorausfüllen der Profilgeräte wurde abgebrochen."
+    }
+  }
+}

@@ -11,12 +11,14 @@ from .const import (
     SERVICE_FORCE_EVAL,
     SERVICE_MARK_MANUAL,
     SERVICE_RESUME,
+    SERVICE_SET_ENABLE_CONTROL,
     SERVICE_SUSPEND,
 )
 from .coordinator import all_plug_policy_coordinators, coordinator_for_device
 
 
 _DEVICE_SCHEMA = vol.Schema({vol.Required("device_id"): cv.string})
+_ENABLE_SCHEMA = vol.Schema({vol.Required("enabled"): cv.boolean})
 
 
 async def _force(hass: HomeAssistant, _call: ServiceCall) -> None:
@@ -33,6 +35,12 @@ async def _apply_now(hass: HomeAssistant, call: ServiceCall) -> None:
         return
     for c in all_plug_policy_coordinators(hass):
         await c.async_apply_now()
+
+
+async def _set_enable_control(hass: HomeAssistant, call: ServiceCall) -> None:
+    enabled = bool(call.data["enabled"])
+    for c in all_plug_policy_coordinators(hass):
+        await c.async_set_enable_control(enabled)
 
 
 async def _suspend(hass: HomeAssistant, call: ServiceCall) -> None:
@@ -61,6 +69,10 @@ SERVICES: dict[str, ServiceDef] = {
     SERVICE_APPLY_NOW: ServiceDef(
         handler=_apply_now,
         schema=vol.Schema({vol.Optional("device_id"): cv.string}),
+    ),
+    SERVICE_SET_ENABLE_CONTROL: ServiceDef(
+        handler=_set_enable_control,
+        schema=_ENABLE_SCHEMA,
     ),
     SERVICE_SUSPEND: ServiceDef(handler=_suspend, schema=_DEVICE_SCHEMA),
     SERVICE_RESUME: ServiceDef(handler=_resume, schema=_DEVICE_SCHEMA),

@@ -19,13 +19,17 @@ Entertainment, optional Activity) und entscheidest, ob die Integration nur
 
 Geräte fügst du danach im Optionsmenü hinzu, einzeln.
 
+Die Integration bleibt absichtlich unter der Domain `plug_policy_engine`.
+Der Slug ist Teil bestehender Config Entries, Services, Entities und Panel-URLs
+und wird deshalb nicht an das `benni_*`-Namensschema angepasst.
+
 ## Policy-Tabelle
 
 | Kürzel | Name             | Verhalten                                                                       |
 |--------|------------------|---------------------------------------------------------------------------------|
 | AO     | Always On        | Immer an; nach HA-Neustart einschalten; nie auto-off.                           |
-| HB     | Home Baseline    | Standard-Zuhause-Verhalten; cut nur bei echter `abwesend`.                       |
-| AC     | Away Cut         | Schaltet bei echter `abwesend` aus, sobald das Gerät idle ist.                  |
+| HB     | Home Baseline    | Standard-Zuhause-Verhalten; schaltet nicht automatisch aus.                     |
+| AC     | Away Cut         | Schaltet bei echter `abwesend` aus, sobald das Gerät stabil idle ist.           |
 | SC     | Schedule Context | An nur in `allowed_contexts` (z. B. Tagesphasen) + awake + zuhause.             |
 | CS     | Charging Safe    | Funktional ≈ AO; nie hart auto-off.                                             |
 | SPECIAL| Sonderlogik      | Wird über `kind` (z. B. tablet, diffuser, bias_light) bestimmt.                 |
@@ -61,10 +65,25 @@ Pro konfiguriertem Gerät:
   reason, blockers, power_w, active_state, context, last_action)
 - `sensor.<device>_last_policy_action`
 
+## Observability-Panel und WebSocket
+
+Das Sidebar-Panel `Plug Policy` nutzt den administrativen WebSocket-Command
+`plug_policy_engine/get_status`. Der Contract liefert:
+
+- `global`: `enable_control`, aktueller Kontext und `last_update_ts`
+- `devices[]`: `device_id`, Name, Kind, Policy, Ist-Zustand, Soll-Zustand,
+  Grund, Blocker, Thresholds, `stable_off_remaining_s`, Allowed Contexts,
+  Suspension-Status, Kontext-Snapshot und Kind-Widget-Daten
+- `debug_export`: vollständiger Snapshot fuer Diagnose/Trace-Weiterverarbeitung
+
+Das Panel zeigt Shadow/Live-Gate, Kontextstreifen, Device-Grid, Detail/Trace,
+Diagnose-Kette und JSON-Debug-Export.
+
 ## Services
 
 - `plug_policy_engine.force_evaluate`
 - `plug_policy_engine.apply_policy_now` (optional `device_id`)
+- `plug_policy_engine.set_enable_control` (`enabled`) — Shadow/Live-Gate setzen
 - `plug_policy_engine.suspend_device_policy` (`device_id`)
 - `plug_policy_engine.resume_device_policy` (`device_id`)
 - `plug_policy_engine.set_manual_recently_on` (`device_id`) — PC-Cooldown setzen
