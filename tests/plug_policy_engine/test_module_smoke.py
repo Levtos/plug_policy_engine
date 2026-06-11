@@ -117,6 +117,7 @@ def _install_ha_stubs() -> None:
         types.ModuleType("homeassistant.helpers.config_validation"),
     )
     ha_cv.string = lambda v: str(v)
+    ha_cv.boolean = lambda v: bool(v)
 
 
 _install_ha_stubs()
@@ -328,9 +329,10 @@ async def test_config_flow_creates_entry_with_module_id_and_empty_devices():
 # =========================================================================
 
 
-def test_services_have_the_five_expected_actions():
+def test_services_have_the_expected_actions():
     assert set(services_module.SERVICES.keys()) == {
         "force_evaluate", "apply_policy_now",
+        "set_enable_control",
         "suspend_device_policy", "resume_device_policy",
         "set_manual_recently_on",
     }
@@ -349,6 +351,7 @@ class _RecordingCoordinator:
         self.configs = configs or {}
         self.evaluate_calls = 0
         self.apply_now_calls: list[str | None] = []
+        self.enable_control_calls: list[bool] = []
         self.suspend_calls: list[tuple[str, bool]] = []
         self.manual_calls: list[str] = []
 
@@ -357,6 +360,9 @@ class _RecordingCoordinator:
 
     async def async_apply_now(self, device_id=None):
         self.apply_now_calls.append(device_id)
+
+    async def async_set_enable_control(self, enabled):
+        self.enable_control_calls.append(enabled)
 
     async def async_suspend(self, device_id, suspend):
         self.suspend_calls.append((device_id, suspend))
@@ -438,6 +444,19 @@ async def test_apply_now_with_device_targets_that_coordinator():
         hass, _FakeCall({"device_id": "plug_a"})
     )
     assert coord.apply_now_calls == ["plug_a"]
+
+
+@_run
+async def test_set_enable_control_routes_to_all_coordinators():
+    hass = _FakeHass()
+    coord = _RecordingCoordinator(configs={"plug_a": object()})
+    hass.data["plug_policy_engine"]["entries"]["e1"] = {
+        "module_id": "plug_policy_engine", "coordinator": coord,
+    }
+    await services_module.SERVICES["set_enable_control"].handler(
+        hass, _FakeCall({"enabled": True})
+    )
+    assert coord.enable_control_calls == [True]
 
 
 @_run

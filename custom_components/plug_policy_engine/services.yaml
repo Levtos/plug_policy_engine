@@ -12,6 +12,16 @@ apply_policy_now:
       selector:
         text:
 
+set_enable_control:
+  name: Set enable control
+  description: Switch between Shadow mode and Live mode for automatic plug control.
+  fields:
+    enabled:
+      description: When true, matching policy decisions may call switch.turn_on/off.
+      required: true
+      selector:
+        boolean:
+
 suspend_device_policy:
   name: Suspend device policy
   description: Stop evaluating or acting on a specific device until resumed.
