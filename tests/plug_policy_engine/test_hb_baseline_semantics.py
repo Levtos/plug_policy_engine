@@ -53,7 +53,7 @@ def test_hb_generic_idle_truly_away_keeps_not_off():
 
 def test_ac_generic_idle_truly_away_cuts():
     d = E.evaluate(
-        _cfg(policy=C.POLICY_AC),
+        _cfg(policy=C.POLICY_AC, stable_off_seconds=0),
         _state(switch_state="on", power_w=0.5),
         _ctx(presence=C.PRESENCE_AWAY),
     )
@@ -128,7 +128,7 @@ def test_hb_appliance_idle_truly_away_keeps():
 def test_ac_appliance_idle_truly_away_cuts():
     d = E.evaluate(
         _cfg(policy=C.POLICY_AC, kind=C.KIND_APPLIANCE,
-             unknown_behavior=C.UNK_ASSUME_IDLE),
+             unknown_behavior=C.UNK_ASSUME_IDLE, stable_off_seconds=0),
         _state(switch_state="on", power_w=0.0),
         _ctx(presence=C.PRESENCE_AWAY),
     )

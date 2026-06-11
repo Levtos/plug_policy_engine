@@ -121,6 +121,8 @@ class PlugPolicyCoordinator:
         self.states: dict[str, DeviceState] = {dev_id: DeviceState() for dev_id in self.configs}
         self.decisions: dict[str, Decision] = {}
         self.last_action: dict[str, dict[str, Any]] = {}
+        self.last_context: dict[str, Any] = {}
+        self.last_update_ts: float | None = None
 
     # ---------- lifecycle ----------
     async def async_init(self) -> None:
@@ -129,6 +131,7 @@ class PlugPolicyCoordinator:
             if dev_id in self.states:
                 st = self.states[dev_id]
                 st.manual_on_until_ts = persisted.get("manual_on_until_ts")
+                st.last_idle_since_ts = persisted.get("last_idle_since_ts")
                 st.diffuser_phase = persisted.get("diffuser_phase", "off")
                 st.diffuser_phase_since_ts = persisted.get("diffuser_phase_since_ts", 0.0)
                 st.suspended = persisted.get("suspended", False)
@@ -216,10 +219,24 @@ class PlugPolicyCoordinator:
     # ---------- evaluation + actions ----------
     async def async_evaluate_all(self, *, ha_just_started: bool = False) -> None:
         ctx = self._build_context()
+        self.last_update_ts = ctx.now_ts
+        self.last_context = {
+            "presence": ctx.presence,
+            "bio": ctx.bio,
+            "day_phase": ctx.day_phase,
+            "media_context": ctx.media_context,
+            "entertainment_active": ctx.entertainment_active,
+            "activity": ctx.activity,
+        }
         for cfg in self.configs.values():
             st = self._refresh_device_state(cfg)
             decision = evaluate(cfg, st, ctx, ha_just_started=ha_just_started)
             self.decisions[cfg.device_id] = decision
+            if decision.active_state == "idle":
+                if st.last_idle_since_ts is None:
+                    st.last_idle_since_ts = ctx.now_ts
+            else:
+                st.last_idle_since_ts = None
 
             if cfg.kind == "diffuser" and decision.desired_switch_state in (DESIRED_ON, DESIRED_OFF):
                 new_phase = "on" if decision.desired_switch_state == DESIRED_ON else "off"
@@ -264,6 +281,10 @@ class PlugPolicyCoordinator:
             self.states[device_id].suspended = suspend
             await self.async_evaluate_all()
 
+    async def async_set_enable_control(self, enabled: bool) -> None:
+        self.enable_control = enabled
+        await self.async_evaluate_all()
+
     async def async_mark_manual_on(self, device_id: str) -> None:
         if device_id not in self.states:
             return
@@ -288,11 +309,92 @@ class PlugPolicyCoordinator:
         if cb in self._listeners:
             self._listeners.remove(cb)
 
+    def _kind_widget(self, cfg: DeviceConfig, st: DeviceState) -> dict[str, Any]:
+        if cfg.kind == "tablet":
+            batt = _safe_float(st.battery_pct)
+            return {
+                "type": "tablet",
+                "battery_pct": batt,
+                "low": cfg.tablet_low,
+                "high": cfg.tablet_high,
+                "guard": batt is not None and batt < 20,
+            }
+        if cfg.kind == "diffuser":
+            duration = (
+                cfg.diffuser_on_minutes * 60
+                if st.diffuser_phase == "on"
+                else cfg.diffuser_off_minutes * 60
+            )
+            elapsed = 0.0
+            if self.last_update_ts is not None:
+                elapsed = max(0.0, self.last_update_ts - (st.diffuser_phase_since_ts or self.last_update_ts))
+            return {
+                "type": "diffuser",
+                "phase": st.diffuser_phase,
+                "countdown_s": max(0, int(duration - elapsed)),
+            }
+        if cfg.kind == "pc":
+            remaining = 0
+            if st.manual_on_until_ts and self.last_update_ts is not None:
+                remaining = max(0, int(st.manual_on_until_ts - self.last_update_ts))
+            return {"type": "pc", "cooldown_remaining_s": remaining}
+        return {"type": cfg.kind}
+
+    def device_status(self, device_id: str) -> dict[str, Any]:
+        cfg = self.configs[device_id]
+        st = self.states[device_id]
+        dec = self.decisions.get(device_id)
+        return {
+            "device_id": device_id,
+            "name": cfg.name,
+            "kind": cfg.kind,
+            "policy": cfg.policy,
+            "switch_entity": cfg.switch_entity,
+            "switch_state": st.switch_state,
+            "power_w": dec.power_w if dec else _safe_float(st.power_w),
+            "active_state": dec.active_state if dec else "unknown",
+            "battery_pct": _safe_float(st.battery_pct),
+            "desired_switch_state": dec.desired_switch_state if dec else DESIRED_KEEP,
+            "reason": dec.reason if dec else "not evaluated yet",
+            "blockers": list(dec.blockers) if dec else [],
+            "thresholds": {
+                "active": cfg.active_threshold,
+                "idle": cfg.idle_threshold,
+                "deadband_lower": cfg.deadband_lower,
+                "deadband_upper": cfg.deadband_upper,
+            },
+            "stable_off_remaining_s": dec.stable_off_remaining_s if dec else None,
+            "allowed_contexts": list(cfg.allowed_contexts),
+            "suspended": st.suspended,
+            "context_snapshot": dict(dec.context) if dec else dict(self.last_context),
+            "kind_widget": self._kind_widget(cfg, st),
+            "last_action": self.last_action.get(device_id, {}),
+        }
+
+    def status_snapshot(self) -> dict[str, Any]:
+        devices = [self.device_status(dev_id) for dev_id in self.configs]
+        global_status = {
+            "enable_control": self.enable_control,
+            "context": dict(self.last_context),
+            "last_update_ts": self.last_update_ts,
+        }
+        return {
+            "global": global_status,
+            "devices": devices,
+            "debug_export": {
+                "global": global_status,
+                "devices": devices,
+                "last_action": dict(self.last_action),
+                "entry_id": self.entry.entry_id,
+            },
+        }
+
     async def _async_save(self) -> None:
         await self._store.async_save({
             "devices": {
                 dev_id: {
                     "manual_on_until_ts": st.manual_on_until_ts,
+                    "last_idle_since_ts": st.last_idle_since_ts,
                     "diffuser_phase": st.diffuser_phase,
                     "diffuser_phase_since_ts": st.diffuser_phase_since_ts,
                     "suspended": st.suspended,
@@ -301,6 +403,15 @@ class PlugPolicyCoordinator:
                 for dev_id, st in self.states.items()
             }
         })
+
+
+def _safe_float(value: Any) -> float | None:
+    if value is None:
+        return None
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
 
 
 # ----------------------------------------------------------------- lookups

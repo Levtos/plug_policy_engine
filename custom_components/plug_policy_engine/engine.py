@@ -8,6 +8,7 @@ lives here so it can be unit-tested without HA.
 from __future__ import annotations
 
 from dataclasses import dataclass, field, asdict, replace as dc_replace
+import math
 from typing import Any, Optional
 
 from .const import (
@@ -135,6 +136,7 @@ class Decision:
     blockers: list = field(default_factory=list)
     power_w: Any = None
     context: dict = field(default_factory=dict)
+    stable_off_remaining_s: Optional[int] = None
 
     def to_attrs(self) -> dict:
         d = asdict(self)
@@ -250,6 +252,30 @@ def evaluate(
             context=context_snapshot,
         )
 
+    def stable_off_gate(decision: Decision) -> Decision:
+        """Delay idle-driven cuts until the device stayed idle long enough."""
+        if decision.desired_switch_state != DESIRED_OFF:
+            return decision
+        if active_state != "idle" or cfg.stable_off_seconds <= 0:
+            return decision
+
+        idle_since = state.last_idle_since_ts
+        elapsed = 0.0 if idle_since is None else max(0.0, ctx.now_ts - idle_since)
+        remaining = max(0, int(math.ceil(cfg.stable_off_seconds - elapsed)))
+        if remaining <= 0:
+            return dc_replace(decision, stable_off_remaining_s=0)
+
+        blockers_waiting = list(decision.blockers)
+        if "stable_off" not in blockers_waiting:
+            blockers_waiting.append("stable_off")
+        return dc_replace(
+            decision,
+            desired_switch_state=DESIRED_KEEP,
+            reason=f"stable-off waiting {remaining}s before cut: {decision.reason}",
+            blockers=blockers_waiting,
+            stable_off_remaining_s=remaining,
+        )
+
     # Service: policy suspended → never act
     if state.suspended:
         blockers.append("policy_suspended")
@@ -264,28 +290,28 @@ def evaluate(
 
     # Device-kind specialisations (these may short-circuit policy)
     if cfg.kind == KIND_TABLET:
-        return _decide_tablet(cfg, state, ctx, make)
+        return stable_off_gate(_decide_tablet(cfg, state, ctx, make))
     if cfg.kind == KIND_DIFFUSER:
-        return _decide_diffuser(cfg, state, ctx, make)
+        return stable_off_gate(_decide_diffuser(cfg, state, ctx, make))
     if cfg.kind == KIND_BIAS_LIGHT:
-        return _decide_bias_light(cfg, state, ctx, make)
+        return stable_off_gate(_decide_bias_light(cfg, state, ctx, make))
     if cfg.kind == KIND_PC:
-        return _decide_pc(cfg, state, ctx, active_state, make)
+        return stable_off_gate(_decide_pc(cfg, state, ctx, active_state, make))
     if cfg.kind == KIND_APPLIANCE:
-        return _decide_appliance(cfg, state, ctx, active_state, make)
+        return stable_off_gate(_decide_appliance(cfg, state, ctx, active_state, make))
 
     # Generic policy dispatch
     if cfg.policy == POLICY_AO:
-        return _decide_ao(cfg, state, ha_just_started, make)
+        return stable_off_gate(_decide_ao(cfg, state, ha_just_started, make))
     if cfg.policy == POLICY_CS:
         # Charging-Safe ~ AO; never auto-off
-        return _decide_ao(cfg, state, ha_just_started, make, label="CS")
+        return stable_off_gate(_decide_ao(cfg, state, ha_just_started, make, label="CS"))
     if cfg.policy == POLICY_HB:
-        return _decide_baseline_or_away(cfg, state, ctx, active_state, make, mode="HB")
+        return stable_off_gate(_decide_baseline_or_away(cfg, state, ctx, active_state, make, mode="HB"))
     if cfg.policy == POLICY_AC:
-        return _decide_baseline_or_away(cfg, state, ctx, active_state, make, mode="AC")
+        return stable_off_gate(_decide_baseline_or_away(cfg, state, ctx, active_state, make, mode="AC"))
     if cfg.policy == POLICY_SC:
-        return _decide_schedule_context(cfg, state, ctx, active_state, make)
+        return stable_off_gate(_decide_schedule_context(cfg, state, ctx, active_state, make))
     if cfg.policy == POLICY_SPECIAL:
         return make(DESIRED_KEEP, "SPECIAL policy: no built-in rule")
 
