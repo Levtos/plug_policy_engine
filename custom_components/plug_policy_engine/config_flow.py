@@ -46,6 +46,9 @@ class PlugPolicyOptionsFlow(OptionsFlow):
     async def async_step_globals(self, user_input=None):
         return await self.helper.async_step_globals(user_input)
 
+    async def async_step_prefill_devices(self, user_input=None):
+        return await self.helper.async_step_prefill_devices(user_input)
+
     async def async_step_add_device(self, user_input=None):
         return await self.helper.async_step_add_device(user_input)
 

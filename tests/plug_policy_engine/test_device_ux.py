@@ -44,22 +44,24 @@ suggest_module = sys.modules["pp_suggest"]
 
 
 class _FakeStates:
-    """Minimal `hass.states` that supports async_entity_ids('sensor')."""
+    """Minimal `hass.states` that supports async_entity_ids(domain)."""
 
-    def __init__(self, sensor_ids: list[str]) -> None:
-        self._sensors = list(sensor_ids)
+    def __init__(self, entity_ids: list[str]) -> None:
+        self._entities = list(entity_ids)
 
     def async_entity_ids(self, domain: str | None = None):
         if domain is None:
-            return list(self._sensors)
-        if domain == "sensor":
-            return list(self._sensors)
-        return []
+            return list(self._entities)
+        return [eid for eid in self._entities if eid.startswith(f"{domain}.")]
 
 
 class _FakeHass:
-    def __init__(self, sensors: list[str] | None = None) -> None:
-        self.states = _FakeStates(sensors or [])
+    def __init__(
+        self,
+        sensors: list[str] | None = None,
+        entity_ids: list[str] | None = None,
+    ) -> None:
+        self.states = _FakeStates(entity_ids if entity_ids is not None else (sensors or []))
         self.data = {"plug_policy_engine": {"entries": {}}}
 
 
@@ -163,6 +165,92 @@ def test_suggest_finds_battery_for_tablet():
     assert s.battery_entity == "sensor.bedroom_tablet_plug_battery"
 
 
+def test_profile_global_prefill_prefers_standalone_profile_entities():
+    hass = _FakeHass(entity_ids=[
+        "sensor.benni_core_presence_personal",
+        "sensor.benni_core_state_presence_personal",
+        "sensor.benni_core_state_bio_state",
+        "sensor.benni_core_state_day_state",
+        "sensor.benni_media_state_media_context",
+        "binary_sensor.benni_media_state_entertainment_active",
+        "sensor.benni_core_state_activity_state",
+    ])
+    defaults = suggest_module.profile_global_prefill(hass)
+    assert defaults == {
+        "presence_entity": "sensor.benni_core_state_presence_personal",
+        "bio_entity": "sensor.benni_core_state_bio_state",
+        "day_entity": "sensor.benni_core_state_day_state",
+        "media_context_entity": "sensor.benni_media_state_media_context",
+        "entertainment_active_entity": "binary_sensor.benni_media_state_entertainment_active",
+        "activity_entity": "sensor.benni_core_state_activity_state",
+    }
+
+
+def test_profile_global_prefill_falls_back_to_legacy_entities():
+    hass = _FakeHass(entity_ids=[
+        "sensor.benni_core_presence_personal",
+        "sensor.benni_core_user_bio_state",
+        "sensor.benni_core_day_state",
+        "sensor.benni_media_context_media_context",
+        "binary_sensor.benni_media_context_entertainment_active",
+        "sensor.context_activity_state_combined",
+    ])
+    defaults = suggest_module.profile_global_prefill(hass)
+    assert defaults["presence_entity"] == "sensor.benni_core_presence_personal"
+    assert defaults["bio_entity"] == "sensor.benni_core_user_bio_state"
+    assert defaults["day_entity"] == "sensor.benni_core_day_state"
+    assert defaults["media_context_entity"] == "sensor.benni_media_context_media_context"
+    assert defaults["entertainment_active_entity"] == (
+        "binary_sensor.benni_media_context_entertainment_active"
+    )
+    assert defaults["activity_entity"] == "sensor.context_activity_state_combined"
+
+
+def test_profile_device_prefill_uses_existing_einhornzentrale_entities_only():
+    hass = _FakeHass(entity_ids=[
+        "switch.living_pc_plug",
+        "sensor.living_pc_plug_power_atomic",
+        "switch.living_denon_plug_denon",
+        "sensor.living_denon_plug_power_atomic",
+        "switch.hall_h14_pro_plug",
+        "sensor.hall_h14_pro_plug_power",
+        "switch.kitchen_dishwasher_plug",
+        "sensor.kitchen_dishwasher_plug_power_atomic",
+        "switch.kitchen_diffuser_plug",
+        "switch.wohnbereich_steckdose_tv",
+        "sensor.living_tv_plug_power_atomic",
+        "switch.living_subwoofer_plug",
+        "switch.kitchen_diffuser_plug_child_lock",
+    ])
+    devices = suggest_module.profile_device_prefill(hass)
+    by_switch = {d["switch_entity"]: d for d in devices}
+
+    assert set(by_switch) == {
+        "switch.living_pc_plug",
+        "switch.living_denon_plug_denon",
+        "switch.hall_h14_pro_plug",
+        "switch.kitchen_dishwasher_plug",
+        "switch.kitchen_diffuser_plug",
+        "switch.wohnbereich_steckdose_tv",
+    }
+    assert by_switch["switch.living_pc_plug"]["power_entity"] == (
+        "sensor.living_pc_plug_power_atomic"
+    )
+    assert by_switch["switch.living_pc_plug"]["kind"] == "pc"
+    assert by_switch["switch.living_denon_plug_denon"]["power_entity"] == (
+        "sensor.living_denon_plug_power_atomic"
+    )
+    assert by_switch["switch.hall_h14_pro_plug"]["power_entity"] == (
+        "sensor.hall_h14_pro_plug_power"
+    )
+    assert by_switch["switch.kitchen_diffuser_plug"]["allowed_contexts"] == [
+        "morning", "day", "evening",
+    ]
+    assert by_switch["switch.wohnbereich_steckdose_tv"]["power_entity"] == (
+        "sensor.living_tv_plug_power_atomic"
+    )
+
+
 # ---------------------------------------------------------------------------
 # 2) Kind-aware field visibility.
 # ---------------------------------------------------------------------------
@@ -221,6 +309,91 @@ async def test_add_device_basics_step_shows_only_basic_fields():
     assert flow.last_form["step_id"] == "device_basics"
     keys = _schema_keys(flow.last_form["schema"])
     assert keys == {"name", "switch_entity", "policy", "kind"}
+
+
+@_run
+async def test_options_menu_includes_profile_prefill():
+    hass = _FakeHass()
+    entry = _FakeEntry()
+    flow = _FakeFlow()
+    helper = flow_module.OptionsFlowHelper(hass, entry, flow)
+    await helper.async_step_init()
+    assert flow.last_menu["options"] == [
+        "globals", "prefill_devices", "add_device", "edit_device", "remove_device",
+    ]
+
+
+@_run
+async def test_prefill_devices_confirms_and_stores_new_profile_devices():
+    hass = _FakeHass(entity_ids=[
+        "switch.living_pc_plug",
+        "sensor.living_pc_plug_power_atomic",
+        "switch.living_denon_plug_denon",
+        "sensor.living_denon_plug_power_atomic",
+    ])
+    entry = _FakeEntry(data={"enable_control": False}, options={"devices": []})
+    flow = _FakeFlow()
+    helper = flow_module.OptionsFlowHelper(hass, entry, flow)
+
+    result = await helper.async_step_prefill_devices()
+    assert result == {"type": "form", "step_id": "prefill_devices"}
+    assert flow.last_form["description"]["count"] == "2"
+    assert "PC" in flow.last_form["description"]["devices"]
+    assert "Denon AVR" in flow.last_form["description"]["devices"]
+
+    await helper.async_step_prefill_devices({"confirm": True})
+    devices = flow.created_entry["data"]["devices"]
+    assert [d["switch_entity"] for d in devices] == [
+        "switch.living_pc_plug",
+        "switch.living_denon_plug_denon",
+    ]
+    assert devices[0]["power_entity"] == "sensor.living_pc_plug_power_atomic"
+    assert devices[1]["power_entity"] == "sensor.living_denon_plug_power_atomic"
+    assert flow.created_entry["data"]["enable_control"] is False
+
+
+@_run
+async def test_prefill_devices_skips_existing_switches():
+    hass = _FakeHass(entity_ids=[
+        "switch.living_pc_plug",
+        "sensor.living_pc_plug_power_atomic",
+        "switch.living_denon_plug_denon",
+        "sensor.living_denon_plug_power_atomic",
+    ])
+    existing = {
+        "device_id": "living_pc_plug",
+        "name": "PC",
+        "switch_entity": "switch.living_pc_plug",
+    }
+    entry = _FakeEntry(options={"devices": [existing]})
+    flow = _FakeFlow()
+    helper = flow_module.OptionsFlowHelper(hass, entry, flow)
+
+    await helper.async_step_prefill_devices({"confirm": True})
+    devices = flow.created_entry["data"]["devices"]
+    assert [d["switch_entity"] for d in devices] == [
+        "switch.living_pc_plug",
+        "switch.living_denon_plug_denon",
+    ]
+    assert devices[0] == existing
+
+
+@_run
+async def test_prefill_devices_aborts_when_nothing_new_detected():
+    hass = _FakeHass(entity_ids=[
+        "switch.living_pc_plug",
+        "sensor.living_pc_plug_power_atomic",
+    ])
+    existing = {
+        "device_id": "living_pc_plug",
+        "name": "PC",
+        "switch_entity": "switch.living_pc_plug",
+    }
+    entry = _FakeEntry(options={"devices": [existing]})
+    flow = _FakeFlow()
+    helper = flow_module.OptionsFlowHelper(hass, entry, flow)
+    result = await helper.async_step_prefill_devices()
+    assert result == {"type": "abort", "reason": "no_prefill_devices"}
 
 
 @_run

@@ -6,7 +6,7 @@ Add-Flow (1 Schritt `module_step`): globale Selektoren (Presence, Bio, Day,
 Media, Entertainment, Activity) + Enable-Control + Scan-Interval; Devices
 werden im Options-Flow gepflegt.
 
-Options-Flow als Menü: globals | add_device | edit_device | remove_device.
+Options-Flow als Menü: globals | prefill_devices | add_device | edit_device | remove_device.
 
 Add/Edit device ist in drei UX-Schritte aufgeteilt:
 
@@ -255,14 +255,18 @@ class ConfigFlowHelper:
     async def async_step_init(self) -> FlowResult:
         await self.flow.async_set_unique_id(f"{MODULE_ID}_singleton")
         self.flow._abort_if_unique_id_configured()
+        defaults = _suggest.profile_global_prefill(self.hass)
         return self.flow.async_show_form(
-            step_id="module_step", data_schema=_globals_schema(),
+            step_id="module_step", data_schema=_globals_schema(defaults),
+            description_placeholders={"profile": "benni"},
         )
 
     async def async_step_module_step(self, user_input: dict[str, Any] | None = None) -> FlowResult:
         if user_input is None:
+            defaults = _suggest.profile_global_prefill(self.hass)
             return self.flow.async_show_form(
-                step_id="module_step", data_schema=_globals_schema(),
+                step_id="module_step", data_schema=_globals_schema(defaults),
+                description_placeholders={"profile": "benni"},
             )
         data: dict[str, Any] = {CONF_MODULE_ID: MODULE_ID, CONF_DEVICES: []}
         data.update({k: v for k, v in user_input.items() if v not in (None, "", [])})
@@ -310,7 +314,7 @@ class OptionsFlowHelper:
         return {**self.entry.data, **self.entry.options}
 
     def _save_devices(self, new_devices: list[dict]) -> FlowResult:
-        new_opts = {**self.entry.options, CONF_DEVICES: new_devices}
+        new_opts = {**self.entry.data, **self.entry.options, CONF_DEVICES: new_devices}
         new_opts.pop(CONF_MODULE_ID, None)
         # Clear in-flight draft after persisting.
         self._draft = {}
@@ -322,7 +326,9 @@ class OptionsFlowHelper:
     async def async_step_init(self, user_input: dict[str, Any] | None = None) -> FlowResult:
         return self.flow.async_show_menu(
             step_id="init",
-            menu_options=["globals", "add_device", "edit_device", "remove_device"],
+            menu_options=[
+                "globals", "prefill_devices", "add_device", "edit_device", "remove_device",
+            ],
         )
 
     async def async_step_globals(self, user_input: dict[str, Any] | None = None) -> FlowResult:
@@ -333,6 +339,34 @@ class OptionsFlowHelper:
             new_opts.pop(CONF_MODULE_ID, None)
             return self.flow.async_create_entry(title="", data=new_opts)
         return self.flow.async_show_form(step_id="globals", data_schema=_globals_schema(opts))
+
+    async def async_step_prefill_devices(
+        self, user_input: dict[str, Any] | None = None,
+    ) -> FlowResult:
+        existing = self._devices()
+        existing_keys = {
+            d.get(CONF_SWITCH) or d.get("device_id")
+            for d in existing
+        }
+        candidates = [
+            d for d in _suggest.profile_device_prefill(self.hass)
+            if d.get(CONF_SWITCH) not in existing_keys and d.get("device_id") not in existing_keys
+        ]
+        if not candidates:
+            return self.flow.async_abort(reason="no_prefill_devices")
+        if user_input is None:
+            names = ", ".join(d.get(CONF_NAME, d["device_id"]) for d in candidates)
+            return self.flow.async_show_form(
+                step_id="prefill_devices",
+                data_schema=vol.Schema({vol.Required("confirm", default=True): bool}),
+                description_placeholders={
+                    "count": str(len(candidates)),
+                    "devices": names,
+                },
+            )
+        if not user_input.get("confirm", False):
+            return self.flow.async_abort(reason="prefill_cancelled")
+        return self._save_devices(existing + candidates)
 
     # ----- add device: basics → sensors → advanced -------------------------
 
