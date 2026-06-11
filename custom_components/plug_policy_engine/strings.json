@@ -1,0 +1,43 @@
+{
+  "config": {
+    "step": {
+      "module_step": {
+        "title": "Plug Policy Engine",
+        "description": "Global selectors. Devices are added via the options menu after setup.",
+        "data": {
+          "presence_entity": "Presence (zuhause / abwesend / bei_eltern)",
+          "bio_entity": "Bio state (awake / sleep)",
+          "day_entity": "Day phase",
+          "media_context_entity": "Media context",
+          "entertainment_active_entity": "Entertainment active",
+          "activity_entity": "Activity (optional)",
+          "enable_control": "Allow integration to switch devices",
+          "scan_interval": "Scan interval (s)"
+        }
+      }
+    },
+    "abort": {
+      "already_configured": "Only one instance of this integration is supported."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Plug Policy Engine",
+        "menu_options": {
+          "globals": "Edit global selectors",
+          "add_device": "Add device",
+          "edit_device": "Edit device",
+          "remove_device": "Remove device"
+        }
+      },
+      "globals": { "title": "Global selectors" },
+      "device_basics": { "title": "Device basics" },
+      "device_sensors": { "title": "Device sensors" },
+      "device_advanced": { "title": "Device policy" },
+      "edit_device": { "title": "Edit device" },
+      "remove_device": { "title": "Remove device" }
+    },
+    "abort": { "no_devices": "No devices configured yet." }
+  }
+}
