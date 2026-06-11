@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import ast
 import asyncio
+import json
 import os
 import sys
 import types
@@ -336,6 +337,22 @@ def test_services_have_the_expected_actions():
         "suspend_device_policy", "resume_device_policy",
         "set_manual_recently_on",
     }
+
+
+def test_options_menu_labels_exist_in_runtime_translations():
+    expected = {
+        "globals", "prefill_devices", "add_device", "edit_device", "remove_device",
+    }
+    files = [
+        MODULE_DIR / "strings.json",
+        MODULE_DIR / "translations" / "en.json",
+        MODULE_DIR / "translations" / "de.json",
+    ]
+    for path in files:
+        data = json.loads(path.read_text(encoding="utf-8"))
+        labels = data["options"]["step"]["init"]["menu_options"]
+        assert set(labels) == expected, path
+        assert all(str(value).strip() for value in labels.values()), path
 
 
 def test_suspend_schema_requires_device_id():
