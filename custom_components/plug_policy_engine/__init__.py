@@ -10,7 +10,15 @@ from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.helpers.typing import ConfigType
 
 from ._spec import SPEC
-from .const import DATA_ENTRIES, DATA_SERVICES_REGISTERED, DATA_WS_REGISTERED, DOMAIN, MODULE_ID, service_name
+from .const import (
+    DATA_ENTRIES,
+    DATA_SERVICES_REGISTERED,
+    DATA_WS_REGISTERED,
+    DOMAIN,
+    LEGACY_GLOBAL_SOURCE_MAP,
+    MODULE_ID,
+    service_name,
+)
 from .coordinator import PlugPolicyCoordinator
 from .entities import async_get_entities  # re-export
 from .flow import ConfigFlowHelper, OptionsFlowHelper  # re-export
@@ -69,6 +77,28 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         async_setup_websocket_api(hass)
         hass.data[DOMAIN][DATA_WS_REGISTERED] = True
     entry.async_on_unload(entry.add_update_listener(_async_reload_on_options))
+    return True
+
+
+async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Migrate retired YAML/media-context globals to current Core sources."""
+    changed = False
+    data = dict(entry.data)
+    options = dict(entry.options)
+    for target in (data, options):
+        for key, value in list(target.items()):
+            if isinstance(value, str) and value in LEGACY_GLOBAL_SOURCE_MAP:
+                target[key] = LEGACY_GLOBAL_SOURCE_MAP[value]
+                changed = True
+
+    if changed or entry.version < 2:
+        hass.config_entries.async_update_entry(
+            entry,
+            data=data,
+            options=options,
+            version=2,
+        )
+        _LOGGER.info("Migrated plug_policy_engine globals to Core/Media State")
     return True
 
 

@@ -17,6 +17,19 @@ Im Setup wählst du die globalen Selektoren (Presence, Bio, Day, Media,
 Entertainment, optional Activity) und entscheidest, ob die Integration nur
 **Sensoren** liefern oder **direkt schalten** darf (`enable_control`).
 
+Neue Setups werden auf Benni automatisch mit den aktuellen Core-/Media-Quellen
+vorbelegt:
+
+- Presence: `sensor.benni_combined_context_presence_personal`
+- Bio: `sensor.benni_combined_context_bio_state`
+- Day: `sensor.benni_combined_context_day_state`
+- Media: `sensor.benni_media_state_media_context`
+- Entertainment: `binary_sensor.benni_media_state_entertainment_active`
+- Activity: `sensor.benni_combined_context_activity_state`
+
+Feine Core-Day-States wie `afternoon` oder `late_night` werden intern auf die
+Plug-Policy-Kontexte `day` bzw. `night` normalisiert.
+
 Geräte fügst du danach im Optionsmenü hinzu, einzeln.
 
 Die Integration bleibt absichtlich unter der Domain `plug_policy_engine`.

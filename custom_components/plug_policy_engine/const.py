@@ -56,6 +56,17 @@ DAY_DAY = "day"
 DAY_EVENING = "evening"
 DAY_NIGHT = "night"
 
+DAY_PHASE_ALIASES: Final[dict[str, str]] = {
+    "early_morning": DAY_MORNING,
+    "late_morning": DAY_MORNING,
+    "forenoon": DAY_MORNING,
+    "afternoon": DAY_DAY,
+    "early_evening": DAY_EVENING,
+    "late_evening": DAY_EVENING,
+    "early_night": DAY_NIGHT,
+    "late_night": DAY_NIGHT,
+}
+
 # Unknown-power behavior
 UNK_ASSUME_ACTIVE = "assume_active"
 UNK_ASSUME_IDLE = "assume_idle"
@@ -95,6 +106,24 @@ CONF_DAY = "day_entity"
 CONF_MEDIA = "media_context_entity"
 CONF_ENTERTAINMENT = "entertainment_active_entity"
 CONF_ACTIVITY = "activity_entity"
+
+GLOBAL_PREFILL: Final[dict[str, str]] = {
+    CONF_PRESENCE: "sensor.benni_combined_context_presence_personal",
+    CONF_BIO: "sensor.benni_combined_context_bio_state",
+    CONF_DAY: "sensor.benni_combined_context_day_state",
+    CONF_MEDIA: "sensor.benni_media_state_media_context",
+    CONF_ENTERTAINMENT: "binary_sensor.benni_media_state_entertainment_active",
+    CONF_ACTIVITY: "sensor.benni_combined_context_activity_state",
+}
+
+LEGACY_GLOBAL_SOURCE_MAP: Final[dict[str, str]] = {
+    "sensor.context_presence_personal_combined": GLOBAL_PREFILL[CONF_PRESENCE],
+    "sensor.context_bio_state_combined": GLOBAL_PREFILL[CONF_BIO],
+    "sensor.context_day_state_combined": GLOBAL_PREFILL[CONF_DAY],
+    "sensor.context_activity_state_combined": GLOBAL_PREFILL[CONF_ACTIVITY],
+    "sensor.benni_media_context_media_context": GLOBAL_PREFILL[CONF_MEDIA],
+    "binary_sensor.benni_media_context_entertainment_active": GLOBAL_PREFILL[CONF_ENTERTAINMENT],
+}
 
 # Behavior
 CONF_ENABLE_CONTROL = "enable_control"

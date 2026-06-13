@@ -56,6 +56,7 @@ from .const import (
     DESIRED_ON,
     DATA_ENTRIES,
     DOMAIN,
+    GLOBAL_PREFILL,
     MODULE_ID,
     STORAGE_VERSION,
 )
@@ -83,12 +84,12 @@ class PlugPolicyCoordinator:
         self.scan_interval: int = int(data.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL))
 
         self.global_entities = {
-            "presence": data.get(CONF_PRESENCE),
-            "bio": data.get(CONF_BIO),
-            "day": data.get(CONF_DAY),
-            "media": data.get(CONF_MEDIA),
-            "entertainment": data.get(CONF_ENTERTAINMENT),
-            "activity": data.get(CONF_ACTIVITY),
+            "presence": self._global_entity(data, CONF_PRESENCE),
+            "bio": self._global_entity(data, CONF_BIO),
+            "day": self._global_entity(data, CONF_DAY),
+            "media": self._global_entity(data, CONF_MEDIA),
+            "entertainment": self._global_entity(data, CONF_ENTERTAINMENT),
+            "activity": self._global_entity(data, CONF_ACTIVITY),
         }
 
         self.configs: dict[str, DeviceConfig] = {}
@@ -123,6 +124,14 @@ class PlugPolicyCoordinator:
         self.last_action: dict[str, dict[str, Any]] = {}
         self.last_context: dict[str, Any] = {}
         self.last_update_ts: float | None = None
+
+    def _global_entity(self, data: dict[str, Any], key: str) -> str | None:
+        configured = data.get(key)
+        if configured:
+            state = self.hass.states.get(configured)
+            if state is not None and state.state not in ("unknown", "unavailable"):
+                return configured
+        return GLOBAL_PREFILL.get(key) or configured
 
     # ---------- lifecycle ----------
     async def async_init(self) -> None:

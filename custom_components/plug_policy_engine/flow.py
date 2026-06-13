@@ -72,6 +72,7 @@ from .const import (
     DEFAULT_STABLE_OFF,
     DEFAULT_TABLET_HIGH,
     DEFAULT_TABLET_LOW,
+    GLOBAL_PREFILL,
     MODULE_ID,
     NAME,
     UNK_ASSUME_ACTIVE,
@@ -97,13 +98,21 @@ def _globals_schema(defaults: dict[str, Any] | None = None) -> vol.Schema:
     # EntitySelector validator doesn't reject empty submissions
     # ("Entity None is neither a valid entity ID").
     return vol.Schema({
-        _opt_entity(CONF_PRESENCE, d.get(CONF_PRESENCE)): _entity(["input_select", "sensor"]),
-        _opt_entity(CONF_BIO, d.get(CONF_BIO)): _entity(["input_select", "sensor"]),
-        _opt_entity(CONF_DAY, d.get(CONF_DAY)): _entity(["input_select", "sensor"]),
-        _opt_entity(CONF_MEDIA, d.get(CONF_MEDIA)): _entity(["input_select", "sensor"]),
-        _opt_entity(CONF_ENTERTAINMENT, d.get(CONF_ENTERTAINMENT)):
+        _opt_entity(CONF_PRESENCE, d.get(CONF_PRESENCE) or GLOBAL_PREFILL[CONF_PRESENCE]):
+            _entity(["input_select", "sensor"]),
+        _opt_entity(CONF_BIO, d.get(CONF_BIO) or GLOBAL_PREFILL[CONF_BIO]):
+            _entity(["input_select", "sensor"]),
+        _opt_entity(CONF_DAY, d.get(CONF_DAY) or GLOBAL_PREFILL[CONF_DAY]):
+            _entity(["input_select", "sensor"]),
+        _opt_entity(CONF_MEDIA, d.get(CONF_MEDIA) or GLOBAL_PREFILL[CONF_MEDIA]):
+            _entity(["input_select", "sensor"]),
+        _opt_entity(
+            CONF_ENTERTAINMENT,
+            d.get(CONF_ENTERTAINMENT) or GLOBAL_PREFILL[CONF_ENTERTAINMENT],
+        ):
             _entity(["binary_sensor", "input_boolean"]),
-        _opt_entity(CONF_ACTIVITY, d.get(CONF_ACTIVITY)): _entity(["input_select", "sensor"]),
+        _opt_entity(CONF_ACTIVITY, d.get(CONF_ACTIVITY) or GLOBAL_PREFILL[CONF_ACTIVITY]):
+            _entity(["input_select", "sensor"]),
         vol.Optional(CONF_ENABLE_CONTROL, default=d.get(CONF_ENABLE_CONTROL, False)): bool,
         vol.Optional(CONF_SCAN_INTERVAL, default=d.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)):
             vol.All(int, vol.Range(min=5, max=600)),
