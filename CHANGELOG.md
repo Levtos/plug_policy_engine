@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.3
+
+- Bump the ConfigEntry `VERSION` to 3 so Home Assistant actually runs the
+  `0.1.2` power-source migration on existing installations.
+
 ## 0.1.2
 
 - Backfill known Benni profile plug devices with existing Core Devices or raw

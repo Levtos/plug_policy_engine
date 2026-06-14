@@ -355,6 +355,22 @@ def test_options_menu_labels_exist_in_runtime_translations():
         assert all(str(value).strip() for value in labels.values()), path
 
 
+def test_config_flow_version_matches_power_source_migration():
+    src = (MODULE_DIR / "config_flow.py").read_text(encoding="utf-8")
+    tree = ast.parse(src)
+    version = None
+    for node in ast.walk(tree):
+        if isinstance(node, ast.ClassDef) and node.name == "PlugPolicyConfigFlow":
+            for stmt in node.body:
+                if (
+                    isinstance(stmt, ast.Assign)
+                    and any(isinstance(t, ast.Name) and t.id == "VERSION" for t in stmt.targets)
+                    and isinstance(stmt.value, ast.Constant)
+                ):
+                    version = stmt.value.value
+    assert version == 3
+
+
 def test_suspend_schema_requires_device_id():
     schema = services_module.SERVICES["suspend_device_policy"].schema
     assert schema is not None
