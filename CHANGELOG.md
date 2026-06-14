@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.2
+
+- Backfill known Benni profile plug devices with existing Core Devices or raw
+  power sources when the saved `power_entity` is missing or unavailable.
+- Read numeric power from Core Devices sensor attributes (`watt`, `power_w`,
+  `power`) so `sensor.benni_device_*` can be used as policy power sources.
+
 ## 0.1.1
 
 - Prefill global context selectors from `benni_core_devices`/Core State and

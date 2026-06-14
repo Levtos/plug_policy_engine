@@ -10,7 +10,11 @@ from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.helpers.typing import ConfigType
 
 from ._spec import SPEC
+from . import _suggest
 from .const import (
+    CONF_DEVICES,
+    CONF_POWER,
+    CONF_SWITCH,
     DATA_ENTRIES,
     DATA_SERVICES_REGISTERED,
     DATA_WS_REGISTERED,
@@ -81,7 +85,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 
 async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Migrate retired YAML/media-context globals to current Core sources."""
+    """Migrate retired YAML/media-context globals and profile power sources."""
     changed = False
     data = dict(entry.data)
     options = dict(entry.options)
@@ -90,16 +94,49 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             if isinstance(value, str) and value in LEGACY_GLOBAL_SOURCE_MAP:
                 target[key] = LEGACY_GLOBAL_SOURCE_MAP[value]
                 changed = True
+        if _backfill_profile_power_entities(hass, target):
+            changed = True
 
-    if changed or entry.version < 2:
+    if changed or entry.version < 3:
         hass.config_entries.async_update_entry(
             entry,
             data=data,
             options=options,
-            version=2,
+            version=3,
         )
-        _LOGGER.info("Migrated plug_policy_engine globals to Core/Media State")
+        _LOGGER.info("Migrated plug_policy_engine sources to Core devices/state")
     return True
+
+
+def _backfill_profile_power_entities(hass: HomeAssistant, target: dict) -> bool:
+    devices = target.get(CONF_DEVICES)
+    if not isinstance(devices, list):
+        return False
+
+    changed = False
+    new_devices: list[dict] = []
+    for item in devices:
+        if not isinstance(item, dict):
+            new_devices.append(item)
+            continue
+        device = dict(item)
+        switch_entity = device.get(CONF_SWITCH)
+        preferred = _suggest.profile_power_entity(hass, switch_entity)
+        if preferred and _power_binding_needs_backfill(hass, device.get(CONF_POWER)):
+            device[CONF_POWER] = preferred
+            changed = True
+        new_devices.append(device)
+
+    if changed:
+        target[CONF_DEVICES] = new_devices
+    return changed
+
+
+def _power_binding_needs_backfill(hass: HomeAssistant, entity_id: str | None) -> bool:
+    if not entity_id:
+        return True
+    state = hass.states.get(entity_id)
+    return state is None or state.state in ("unknown", "unavailable")
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:

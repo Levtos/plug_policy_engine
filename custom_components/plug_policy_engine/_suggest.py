@@ -188,6 +188,50 @@ _PROFILE_GLOBALS: dict[str, dict[str, tuple[str, ...]]] = {
     },
 }
 
+_PROFILE_POWER_ENTITIES: dict[str, dict[str, tuple[str, ...]]] = {
+    "benni": {
+        "living_pc_plug": (
+            "sensor.benni_device_living_pc",
+            "sensor.living_pc_plug_power",
+        ),
+        "living_denon_plug_denon": (
+            "sensor.benni_device_living_avr",
+            "sensor.living_denon_plug_power_atomic",
+        ),
+        "hall_h14_pro_plug": (
+            "sensor.hall_h14_pro_plug_power",
+        ),
+        "kitchen_washing_machine_plug": (
+            "sensor.benni_device_kitchen_washing_machine",
+            "sensor.kitchen_washing_machine_plug_power",
+        ),
+        "kitchen_dryer_plug": (
+            "sensor.benni_device_kitchen_dryer",
+            "sensor.kitchen_dryer_plug_power",
+        ),
+        "kitchen_dishwasher_plug": (
+            "sensor.benni_device_kitchen_dishwasher",
+            "sensor.kitchen_dishwasher_plug_power",
+        ),
+        "kitchen_coffee_machine_plug": (
+            "sensor.benni_device_kitchen_coffee",
+            "sensor.kitchen_coffee_machine_plug_power",
+        ),
+        "living_ps5_plug": (
+            "sensor.benni_device_ps5",
+            "sensor.living_ps5_plug_power",
+        ),
+        "living_switch_plug": (
+            "sensor.benni_device_living_switch_plug",
+            "sensor.living_switch_plug_power",
+        ),
+        "wohnbereich_steckdose_tv": (
+            "sensor.benni_device_living_tv",
+            "sensor.living_tv_plug_power_atomic",
+        ),
+    },
+}
+
 
 def profile_global_prefill(hass, profile: str = "benni") -> dict:
     """Return existing global selector defaults for a profile.
@@ -202,6 +246,18 @@ def profile_global_prefill(hass, profile: str = "benni") -> dict:
                 out[key] = entity_id
                 break
     return out
+
+
+def profile_power_entity(hass, switch_entity: str | None, profile: str = "benni") -> str | None:
+    """Return the preferred profile power source for a switch if it exists."""
+    slug = base_slug(switch_entity)
+    if not slug:
+        return None
+    for entity_id in _PROFILE_POWER_ENTITIES.get(profile, {}).get(slug, ()):
+        if _has_entity(hass, entity_id):
+            return entity_id
+    suggestion = suggest_for_switch(hass, switch_entity)
+    return suggestion.power_entity
 
 
 # ---------------------------------------------------------------------------
@@ -577,6 +633,10 @@ def profile_device_prefill(hass, profile: str = "benni") -> list[dict]:
         if preset is not None:
             device.update(preset.values)
         device.update(item.values)
+
+        power_entity = profile_power_entity(hass, item.switch_entity, profile)
+        if power_entity:
+            device["power_entity"] = power_entity
 
         suggestion = suggest_for_switch(hass, item.switch_entity)
         if "power_entity" not in device and suggestion.power_entity:

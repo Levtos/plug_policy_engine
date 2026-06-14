@@ -201,6 +201,20 @@ class PlugPolicyCoordinator:
         s = self.hass.states.get(entity_id)
         return s.state if s else None
 
+    def _read_power(self, entity_id: str | None) -> Any:
+        if not entity_id:
+            return None
+        s = self.hass.states.get(entity_id)
+        if s is None:
+            return None
+        if _safe_float(s.state) is not None:
+            return s.state
+        for attr in ("watt", "power_w", "power"):
+            value = s.attributes.get(attr)
+            if _safe_float(value) is not None:
+                return value
+        return s.state
+
     def _read_bool(self, entity_id: str | None) -> bool | None:
         s = self._read_str(entity_id)
         if s is None:
@@ -221,7 +235,7 @@ class PlugPolicyCoordinator:
     def _refresh_device_state(self, cfg: DeviceConfig) -> DeviceState:
         st = self.states[cfg.device_id]
         st.switch_state = self._read_str(cfg.switch_entity)
-        st.power_w = self._read_str(cfg.power_entity) if cfg.power_entity else None
+        st.power_w = self._read_power(cfg.power_entity)
         st.battery_pct = self._read_str(cfg.battery_entity) if cfg.battery_entity else None
         return st
 

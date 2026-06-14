@@ -47,6 +47,15 @@ def test_atomic_power_is_preferred_over_raw_power():
     assert s.power_entity == "sensor.living_pc_plug_power_atomic"
 
 
+def test_profile_power_prefers_core_device_over_atomic_power():
+    hass = _FakeHass([
+        "sensor.benni_device_living_pc",
+        "sensor.living_pc_plug_power_atomic",
+    ])
+    power = suggest_module.profile_power_entity(hass, "switch.living_pc_plug")
+    assert power == "sensor.benni_device_living_pc"
+
+
 def test_raw_power_is_used_when_atomic_absent():
     hass = _FakeHass(["sensor.living_pc_plug_power"])
     s = suggest_module.suggest_for_switch(hass, "switch.living_pc_plug")

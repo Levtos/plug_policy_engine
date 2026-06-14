@@ -209,15 +209,19 @@ def test_profile_global_prefill_falls_back_to_legacy_entities():
 def test_profile_device_prefill_uses_existing_einhornzentrale_entities_only():
     hass = _FakeHass(entity_ids=[
         "switch.living_pc_plug",
+        "sensor.benni_device_living_pc",
         "sensor.living_pc_plug_power_atomic",
         "switch.living_denon_plug_denon",
+        "sensor.benni_device_living_avr",
         "sensor.living_denon_plug_power_atomic",
         "switch.hall_h14_pro_plug",
         "sensor.hall_h14_pro_plug_power",
         "switch.kitchen_dishwasher_plug",
+        "sensor.benni_device_kitchen_dishwasher",
         "sensor.kitchen_dishwasher_plug_power_atomic",
         "switch.kitchen_diffuser_plug",
         "switch.wohnbereich_steckdose_tv",
+        "sensor.benni_device_living_tv",
         "sensor.living_tv_plug_power_atomic",
         "switch.living_subwoofer_plug",
         "switch.kitchen_diffuser_plug_child_lock",
@@ -234,11 +238,11 @@ def test_profile_device_prefill_uses_existing_einhornzentrale_entities_only():
         "switch.wohnbereich_steckdose_tv",
     }
     assert by_switch["switch.living_pc_plug"]["power_entity"] == (
-        "sensor.living_pc_plug_power_atomic"
+        "sensor.benni_device_living_pc"
     )
     assert by_switch["switch.living_pc_plug"]["kind"] == "pc"
     assert by_switch["switch.living_denon_plug_denon"]["power_entity"] == (
-        "sensor.living_denon_plug_power_atomic"
+        "sensor.benni_device_living_avr"
     )
     assert by_switch["switch.hall_h14_pro_plug"]["power_entity"] == (
         "sensor.hall_h14_pro_plug_power"
@@ -246,8 +250,11 @@ def test_profile_device_prefill_uses_existing_einhornzentrale_entities_only():
     assert by_switch["switch.kitchen_diffuser_plug"]["allowed_contexts"] == [
         "morning", "day", "evening",
     ]
+    assert by_switch["switch.kitchen_dishwasher_plug"]["power_entity"] == (
+        "sensor.benni_device_kitchen_dishwasher"
+    )
     assert by_switch["switch.wohnbereich_steckdose_tv"]["power_entity"] == (
-        "sensor.living_tv_plug_power_atomic"
+        "sensor.benni_device_living_tv"
     )
 
 
