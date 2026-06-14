@@ -60,6 +60,7 @@ from .const import (
     MODULE_ID,
     STORAGE_VERSION,
 )
+from . import _suggest
 from .engine import Decision, DeviceConfig, DeviceState, GlobalContext, evaluate
 from .storage import make_store
 
@@ -98,7 +99,8 @@ class PlugPolicyCoordinator:
                 device_id=d["device_id"],
                 name=d.get(CONF_NAME, d["device_id"]),
                 switch_entity=d[CONF_SWITCH],
-                power_entity=d.get(CONF_POWER),
+                power_entity=d.get(CONF_POWER)
+                or _suggest.profile_power_entity(hass, d.get(CONF_SWITCH)),
                 battery_entity=d.get(CONF_BATTERY),
                 policy=d.get(CONF_POLICY, "HB"),
                 kind=d.get(CONF_KIND, "generic"),

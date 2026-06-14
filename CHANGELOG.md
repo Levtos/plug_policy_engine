@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.5
+
+- Add a runtime coordinator fallback for known profile devices whose saved
+  config still lacks `power_entity`, so existing entries can read Core Devices
+  power immediately after restart even if storage migration did not persist the
+  field.
+
 ## 0.1.4
 
 - Migrate known Einhornzentrale plug power bindings from missing or old

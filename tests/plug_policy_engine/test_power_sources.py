@@ -24,10 +24,27 @@ class _FakeStates:
     def get(self, entity_id):
         return self._states.get(entity_id)
 
+    def async_entity_ids(self, domain=None):
+        if domain is None:
+            return list(self._states)
+        return [
+            entity_id
+            for entity_id in self._states
+            if entity_id.startswith(f"{domain}.")
+        ]
+
 
 class _FakeHass:
     def __init__(self, states):
         self.states = _FakeStates(states)
+
+
+class _FakeEntry:
+    entry_id = "entry-1"
+
+    def __init__(self, data, options=None):
+        self.data = data
+        self.options = options or {}
 
 
 def _load_coordinator_module():
@@ -51,8 +68,21 @@ def _load_coordinator_module():
     storage_stub.make_store = lambda *args, **kwargs: None
     sys.modules["pp_storage_stub"] = storage_stub
 
+    suggest_stub = types.ModuleType("pp_suggest_stub")
+
+    def _profile_power_entity(hass, switch_entity):
+        if switch_entity == "switch.living_pc_plug" and hass.states.get(
+            "sensor.benni_device_living_pc"
+        ):
+            return "sensor.benni_device_living_pc"
+        return None
+
+    suggest_stub.profile_power_entity = _profile_power_entity
+    sys.modules["pp_suggest_stub"] = suggest_stub
+
     src = (MODULE_DIR / "coordinator.py").read_text(encoding="utf-8")
     src = src.replace("from .const import", "from pp_const import")
+    src = src.replace("from . import _suggest", "import pp_suggest_stub as _suggest")
     src = src.replace("from .engine import", "from pp_engine import")
     src = src.replace("from .storage import make_store", "from pp_storage_stub import make_store")
     mod = types.ModuleType("pp_coordinator_real_power_test")
@@ -79,6 +109,30 @@ def test_read_power_uses_watt_attribute_for_core_device_sensor():
     assert coord._read_power("sensor.benni_device_living_pc") == 170.0
 
 
+def test_coordinator_backfills_missing_profile_power_entity_at_runtime():
+    mod = _load_coordinator_module()
+    hass = _FakeHass({
+        "switch.living_pc_plug": _FakeState("on"),
+        "sensor.benni_device_living_pc": _FakeState("on", {"watt": 170.0}),
+    })
+    entry = _FakeEntry({
+        "devices": [
+            {
+                "device_id": "living_pc_plug",
+                "name": "PC",
+                "switch_entity": "switch.living_pc_plug",
+                "policy": "HB",
+                "kind": "pc",
+            }
+        ]
+    })
+
+    coord = mod.PlugPolicyCoordinator(hass, entry)
+
+    assert coord.configs["living_pc_plug"].power_entity == "sensor.benni_device_living_pc"
+    assert coord._refresh_device_state(coord.configs["living_pc_plug"]).power_w == 170.0
+
+
 def test_read_power_preserves_unknown_when_no_numeric_power_exists():
     mod = _load_coordinator_module()
     coord = mod.PlugPolicyCoordinator.__new__(mod.PlugPolicyCoordinator)
@@ -86,4 +140,3 @@ def test_read_power_preserves_unknown_when_no_numeric_power_exists():
         "sensor.device_without_power": _FakeState("on", {"watt": None}),
     })
     assert coord._read_power("sensor.device_without_power") == "on"
-
