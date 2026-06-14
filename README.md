@@ -95,7 +95,8 @@ Diagnose-Kette und JSON-Debug-Export.
 ## Services
 
 - `plug_policy_engine.force_evaluate`
-- `plug_policy_engine.apply_policy_now` (optional `device_id`)
+- `plug_policy_engine.apply_policy_now` (optional `device_id`; mit
+  `device_id` wird nur dieses eine Gerät temporär angewendet)
 - `plug_policy_engine.set_enable_control` (`enabled`) — Shadow/Live-Gate setzen
 - `plug_policy_engine.suspend_device_policy` (`device_id`)
 - `plug_policy_engine.resume_device_policy` (`device_id`)
@@ -169,6 +170,8 @@ Die Decision-Engine läuft ohne Home-Assistant-Mock. Abgedeckt:
   Schalterzustand vom gewünschten abweicht.
 - Gleichartige In-Flight-Schalt-Calls werden pro Gerät gedrosselt, bis Home
   Assistant den Zielzustand zurückmeldet oder ein kurzer Retry-Guard abläuft.
+- `plug_policy_engine.apply_policy_now(device_id=...)` ist auf das ausgewählte
+  Gerät begrenzt; ohne `device_id` wird bewusst die gesamte Policy angewendet.
 - `plug_policy_engine.set_enable_control` persistiert Shadow/Live in der
   Config Entry, damit der Gate-Zustand Reloads und Neustarts überlebt.
 - Ohne `enable_control` liefert die Integration ausschließlich Entscheidungs-Sensoren.

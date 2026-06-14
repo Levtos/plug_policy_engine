@@ -275,27 +275,36 @@ class PlugPolicyCoordinator:
             "activity": ctx.activity,
         }
         for cfg in self.configs.values():
-            st = self._refresh_device_state(cfg)
-            decision = evaluate(cfg, st, ctx, ha_just_started=ha_just_started)
-            self.decisions[cfg.device_id] = decision
-            if decision.active_state == "idle":
-                if st.last_idle_since_ts is None:
-                    st.last_idle_since_ts = ctx.now_ts
-            else:
-                st.last_idle_since_ts = None
-
-            if cfg.kind == "diffuser" and decision.desired_switch_state in (DESIRED_ON, DESIRED_OFF):
-                new_phase = "on" if decision.desired_switch_state == DESIRED_ON else "off"
-                if st.diffuser_phase != new_phase:
-                    st.diffuser_phase = new_phase
-                    st.diffuser_phase_since_ts = ctx.now_ts
-
-            if self.enable_control:
-                await self._apply_decision(cfg, st, decision)
+            await self._async_evaluate_one(cfg, ctx, ha_just_started=ha_just_started)
 
         await self._async_save()
         for cb in self._listeners:
             cb()
+
+    async def _async_evaluate_one(
+        self,
+        cfg: DeviceConfig,
+        ctx: GlobalContext,
+        *,
+        ha_just_started: bool = False,
+    ) -> None:
+        st = self._refresh_device_state(cfg)
+        decision = evaluate(cfg, st, ctx, ha_just_started=ha_just_started)
+        self.decisions[cfg.device_id] = decision
+        if decision.active_state == "idle":
+            if st.last_idle_since_ts is None:
+                st.last_idle_since_ts = ctx.now_ts
+        else:
+            st.last_idle_since_ts = None
+
+        if cfg.kind == "diffuser" and decision.desired_switch_state in (DESIRED_ON, DESIRED_OFF):
+            new_phase = "on" if decision.desired_switch_state == DESIRED_ON else "off"
+            if st.diffuser_phase != new_phase:
+                st.diffuser_phase = new_phase
+                st.diffuser_phase_since_ts = ctx.now_ts
+
+        if self.enable_control:
+            await self._apply_decision(cfg, st, decision)
 
     async def _apply_decision(self, cfg: DeviceConfig, st: DeviceState, dec: Decision) -> None:
         if dec.desired_switch_state == DESIRED_KEEP:
@@ -379,6 +388,25 @@ class PlugPolicyCoordinator:
         prev = self.enable_control
         self.enable_control = True
         try:
+            if device_id:
+                cfg = self.configs.get(device_id)
+                if cfg is None:
+                    return
+                ctx = self._build_context()
+                self.last_update_ts = ctx.now_ts
+                self.last_context = {
+                    "presence": ctx.presence,
+                    "bio": ctx.bio,
+                    "day_phase": ctx.day_phase,
+                    "media_context": ctx.media_context,
+                    "entertainment_active": ctx.entertainment_active,
+                    "activity": ctx.activity,
+                }
+                await self._async_evaluate_one(cfg, ctx)
+                await self._async_save()
+                for cb in self._listeners:
+                    cb()
+                return
             await self.async_evaluate_all()
         finally:
             self.enable_control = prev

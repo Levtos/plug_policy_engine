@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import sys
 import types
+from datetime import datetime
 from pathlib import Path
 
 import tests.plug_policy_engine.test_module_smoke as smoke  # noqa: E402
@@ -37,6 +38,29 @@ class _FakeStates:
 class _FakeHass:
     def __init__(self, states):
         self.states = _FakeStates(states)
+        self.services = _FakeServices()
+
+
+class _FakeServices:
+    def __init__(self):
+        self.calls = []
+
+    async def async_call(self, domain, service, data, blocking=False, target=None):
+        self.calls.append({
+            "domain": domain,
+            "service": service,
+            "data": data,
+            "blocking": blocking,
+            "target": target,
+        })
+
+
+class _FakeStore:
+    async def async_load(self):
+        return {}
+
+    async def async_save(self, data):
+        self.data = data
 
 
 class _FakeEntry:
@@ -62,10 +86,10 @@ def _load_coordinator_module():
     ha_util = sys.modules.setdefault("homeassistant.util", types.ModuleType("homeassistant.util"))
     ha_util.__path__ = []  # type: ignore[attr-defined]
     dt_mod = sys.modules.setdefault("homeassistant.util.dt", types.ModuleType("homeassistant.util.dt"))
-    dt_mod.utcnow = lambda: __import__("datetime").datetime.datetime(2026, 6, 14)
+    dt_mod.utcnow = lambda: datetime(2026, 6, 14)
 
     storage_stub = types.ModuleType("pp_storage_stub")
-    storage_stub.make_store = lambda *args, **kwargs: None
+    storage_stub.make_store = lambda *args, **kwargs: _FakeStore()
     sys.modules["pp_storage_stub"] = storage_stub
 
     suggest_stub = types.ModuleType("pp_suggest_stub")
@@ -194,3 +218,41 @@ def test_read_power_preserves_unknown_when_no_numeric_power_exists():
         "sensor.device_without_power": _FakeState("on", {"watt": None}),
     })
     assert coord._read_power("sensor.device_without_power") == "on"
+
+
+@smoke._run
+async def test_apply_now_with_device_only_calls_selected_switch():
+    mod = _load_coordinator_module()
+    hass = _FakeHass({
+        "switch.target_plug": _FakeState("off"),
+        "switch.other_plug": _FakeState("off"),
+    })
+    entry = _FakeEntry({
+        "enable_control": False,
+        "devices": [
+            {
+                "device_id": "target_plug",
+                "name": "Target",
+                "switch_entity": "switch.target_plug",
+                "policy": "AO",
+                "kind": "generic",
+            },
+            {
+                "device_id": "other_plug",
+                "name": "Other",
+                "switch_entity": "switch.other_plug",
+                "policy": "AO",
+                "kind": "generic",
+            },
+        ],
+    })
+    coord = mod.PlugPolicyCoordinator(hass, entry)
+
+    await coord.async_apply_now("target_plug")
+
+    assert coord.enable_control is False
+    assert [call["target"] for call in hass.services.calls] == [
+        {"entity_id": "switch.target_plug"},
+    ]
+    assert "target_plug" in coord.decisions
+    assert "other_plug" not in coord.decisions

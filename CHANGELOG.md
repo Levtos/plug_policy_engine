@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.11
+
+- Make `apply_policy_now(device_id=...)` apply only the selected device instead
+  of temporarily evaluating all devices with control enabled.
+- Add regression coverage for targeted apply calls so observed single-device
+  live tests stay scoped.
+
 ## 0.1.10
 
 - Throttle duplicate in-flight `switch.turn_on/off` calls per device so fast
