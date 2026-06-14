@@ -66,6 +66,13 @@ from .storage import make_store
 
 _LOGGER = logging.getLogger(__name__)
 
+_PROFILE_POWER_BY_SWITCH = {
+    "switch.living_pc_plug": ("sensor.benni_device_living_pc",),
+    "switch.kitchen_washing_machine_plug": ("sensor.benni_device_kitchen_washing_machine",),
+    "switch.kitchen_dryer_plug": ("sensor.benni_device_kitchen_dryer",),
+    "switch.kitchen_dishwasher_plug": ("sensor.benni_device_kitchen_dishwasher",),
+}
+
 
 class PlugPolicyCoordinator:
     """Liest HA-State, ruft die reine Engine, exposes Decisions, treibt Switches optional."""
@@ -223,6 +230,16 @@ class PlugPolicyCoordinator:
             return None
         return s.lower() in ("on", "true", "1", "active", "playing")
 
+    def _resolve_power_entity(self, cfg: DeviceConfig) -> str | None:
+        if cfg.power_entity:
+            return cfg.power_entity
+        for entity_id in _PROFILE_POWER_BY_SWITCH.get(cfg.switch_entity, ()):
+            if self.hass.states.get(entity_id) is not None:
+                cfg.power_entity = entity_id
+                return entity_id
+        cfg.power_entity = _suggest.profile_power_entity(self.hass, cfg.switch_entity)
+        return cfg.power_entity
+
     def _build_context(self) -> GlobalContext:
         return GlobalContext(
             presence=self._read_str(self.global_entities["presence"]),
@@ -237,9 +254,7 @@ class PlugPolicyCoordinator:
     def _refresh_device_state(self, cfg: DeviceConfig) -> DeviceState:
         st = self.states[cfg.device_id]
         st.switch_state = self._read_str(cfg.switch_entity)
-        if not cfg.power_entity:
-            cfg.power_entity = _suggest.profile_power_entity(self.hass, cfg.switch_entity)
-        st.power_w = self._read_power(cfg.power_entity)
+        st.power_w = self._read_power(self._resolve_power_entity(cfg))
         st.battery_pct = self._read_str(cfg.battery_entity) if cfg.battery_entity else None
         return st
 

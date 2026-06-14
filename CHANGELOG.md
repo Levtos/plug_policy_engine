@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.8
+
+- Add a coordinator-local power source fallback for known Einhornzentrale plug
+  switches and expose `power_entity` source diagnostics on policy/summary
+  sensors.
+
 ## 0.1.7
 
 - Prefer direct `hass.states.get(entity_id)` checks when resolving profile

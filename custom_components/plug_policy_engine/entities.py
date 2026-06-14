@@ -108,6 +108,13 @@ class SummarySensor(_ListenerMixin, SensorEntity):
     def extra_state_attributes(self) -> dict:
         return {
             "devices": {dev_id: d.to_attrs() for dev_id, d in self.coord.decisions.items()},
+            "device_sources": {
+                dev_id: {
+                    "switch_entity": cfg.switch_entity,
+                    "power_entity": cfg.power_entity,
+                }
+                for dev_id, cfg in self.coord.configs.items()
+            },
             "enable_control": self.coord.enable_control,
         }
 
@@ -171,6 +178,7 @@ class PolicyStateSensor(_PerDeviceBase, SensorEntity):
         return {
             "kind": self._cfg.kind,
             "switch_entity": self._cfg.switch_entity,
+            "power_entity": self._cfg.power_entity,
             "suspended": self.coord.states[self.dev_id].suspended,
         }
 
