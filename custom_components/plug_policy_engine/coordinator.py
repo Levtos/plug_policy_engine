@@ -237,6 +237,8 @@ class PlugPolicyCoordinator:
     def _refresh_device_state(self, cfg: DeviceConfig) -> DeviceState:
         st = self.states[cfg.device_id]
         st.switch_state = self._read_str(cfg.switch_entity)
+        if not cfg.power_entity:
+            cfg.power_entity = _suggest.profile_power_entity(self.hass, cfg.switch_entity)
         st.power_w = self._read_power(cfg.power_entity)
         st.battery_pct = self._read_str(cfg.battery_entity) if cfg.battery_entity else None
         return st

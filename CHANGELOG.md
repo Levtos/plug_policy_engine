@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.6
+
+- Resolve missing profile power entities during each coordinator refresh, so
+  entries that start before Core Devices sensors are registered still pick up
+  `sensor.benni_device_*` power once those states appear.
+
 ## 0.1.5
 
 - Add a runtime coordinator fallback for known profile devices whose saved

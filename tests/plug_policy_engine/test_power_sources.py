@@ -133,6 +133,35 @@ def test_coordinator_backfills_missing_profile_power_entity_at_runtime():
     assert coord._refresh_device_state(coord.configs["living_pc_plug"]).power_w == 170.0
 
 
+def test_coordinator_resolves_profile_power_after_core_device_appears():
+    mod = _load_coordinator_module()
+    hass = _FakeHass({
+        "switch.living_pc_plug": _FakeState("on"),
+    })
+    entry = _FakeEntry({
+        "devices": [
+            {
+                "device_id": "living_pc_plug",
+                "name": "PC",
+                "switch_entity": "switch.living_pc_plug",
+                "policy": "HB",
+                "kind": "pc",
+            }
+        ]
+    })
+    coord = mod.PlugPolicyCoordinator(hass, entry)
+    cfg = coord.configs["living_pc_plug"]
+    assert cfg.power_entity is None
+
+    hass.states._states["sensor.benni_device_living_pc"] = _FakeState(
+        "on",
+        {"watt": 170.0},
+    )
+
+    assert coord._refresh_device_state(cfg).power_w == 170.0
+    assert cfg.power_entity == "sensor.benni_device_living_pc"
+
+
 def test_read_power_preserves_unknown_when_no_numeric_power_exists():
     mod = _load_coordinator_module()
     coord = mod.PlugPolicyCoordinator.__new__(mod.PlugPolicyCoordinator)
