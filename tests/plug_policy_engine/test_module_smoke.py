@@ -368,7 +368,68 @@ def test_config_flow_version_matches_power_source_migration():
                     and isinstance(stmt.value, ast.Constant)
                 ):
                     version = stmt.value.value
-    assert version == 3
+    assert version == 4
+
+
+def test_power_source_migration_prefers_core_device_for_known_profile_source():
+    suggest_src = (MODULE_DIR / "_suggest.py").read_text(encoding="utf-8")
+    suggest_mod = types.ModuleType("pp_suggest_migration_test")
+    sys.modules[suggest_mod.__name__] = suggest_mod
+    exec(compile(suggest_src, str(MODULE_DIR / "_suggest.py"), "exec"), suggest_mod.__dict__)
+
+    full_init_src = (MODULE_DIR / "__init__.py").read_text(encoding="utf-8")
+    start = full_init_src.index("def _backfill_profile_power_entities")
+    end = full_init_src.index("\n\nasync def async_unload_entry")
+    init_src = (
+        "from __future__ import annotations\n"
+        "from pp_const import CONF_DEVICES, CONF_POWER, CONF_SWITCH\n"
+        "import pp_suggest_migration_test as _suggest\n\n"
+        + full_init_src[start:end]
+    )
+    init_mod = types.ModuleType("pp_init_migration_test")
+    exec(compile(init_src, str(MODULE_DIR / "__init__.py"), "exec"), init_mod.__dict__)
+
+    class _State:
+        def __init__(self, state):
+            self.state = state
+
+    class _States:
+        def __init__(self, entity_ids):
+            self._states = {entity_id: _State("1") for entity_id in entity_ids}
+
+        def async_entity_ids(self, domain=None):
+            if domain is None:
+                return list(self._states)
+            return [entity_id for entity_id in self._states if entity_id.startswith(f"{domain}.")]
+
+        def get(self, entity_id):
+            return self._states.get(entity_id)
+
+    hass = types.SimpleNamespace(states=_States([
+        "switch.living_pc_plug",
+        "sensor.benni_device_living_pc",
+        "sensor.living_pc_plug_power",
+        "sensor.custom_power_meter",
+    ]))
+
+    target = {
+        "devices": [
+            {"switch_entity": "switch.living_pc_plug"},
+            {
+                "switch_entity": "switch.living_pc_plug",
+                "power_entity": "sensor.living_pc_plug_power",
+            },
+            {
+                "switch_entity": "switch.living_pc_plug",
+                "power_entity": "sensor.custom_power_meter",
+            },
+        ]
+    }
+
+    assert init_mod._backfill_profile_power_entities(hass, target) is True
+    assert target["devices"][0]["power_entity"] == "sensor.benni_device_living_pc"
+    assert target["devices"][1]["power_entity"] == "sensor.benni_device_living_pc"
+    assert target["devices"][2]["power_entity"] == "sensor.custom_power_meter"
 
 
 def test_suspend_schema_requires_device_id():

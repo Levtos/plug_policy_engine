@@ -12,7 +12,7 @@ from .flow import ConfigFlowHelper, OptionsFlowHelper
 
 
 class PlugPolicyConfigFlow(ConfigFlow, domain=DOMAIN):
-    VERSION = 3
+    VERSION = 4
 
     async def async_step_user(self, user_input: dict[str, Any] | None = None):
         helper = ConfigFlowHelper(self.hass, self)

@@ -260,6 +260,18 @@ def profile_power_entity(hass, switch_entity: str | None, profile: str = "benni"
     return suggestion.power_entity
 
 
+def profile_power_candidates(hass, switch_entity: str | None, profile: str = "benni") -> tuple[str, ...]:
+    """Return known profile/autodetect power candidates for a switch."""
+    slug = base_slug(switch_entity)
+    if not slug:
+        return ()
+    candidates: list[str] = list(_PROFILE_POWER_ENTITIES.get(profile, {}).get(slug, ()))
+    suggestion = suggest_for_switch(hass, switch_entity)
+    if suggestion.power_entity and suggestion.power_entity not in candidates:
+        candidates.append(suggestion.power_entity)
+    return tuple(candidates)
+
+
 # ---------------------------------------------------------------------------
 # Kind-aware field visibility.
 #

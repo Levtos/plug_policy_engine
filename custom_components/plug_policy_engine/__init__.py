@@ -97,12 +97,12 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         if _backfill_profile_power_entities(hass, target):
             changed = True
 
-    if changed or entry.version < 3:
+    if changed or entry.version < 4:
         hass.config_entries.async_update_entry(
             entry,
             data=data,
             options=options,
-            version=3,
+            version=4,
         )
         _LOGGER.info("Migrated plug_policy_engine sources to Core devices/state")
     return True
@@ -122,7 +122,12 @@ def _backfill_profile_power_entities(hass: HomeAssistant, target: dict) -> bool:
         device = dict(item)
         switch_entity = device.get(CONF_SWITCH)
         preferred = _suggest.profile_power_entity(hass, switch_entity)
-        if preferred and _power_binding_needs_backfill(hass, device.get(CONF_POWER)):
+        if preferred and _power_binding_needs_backfill(
+            hass,
+            device.get(CONF_POWER),
+            preferred,
+            switch_entity,
+        ):
             device[CONF_POWER] = preferred
             changed = True
         new_devices.append(device)
@@ -132,11 +137,20 @@ def _backfill_profile_power_entities(hass: HomeAssistant, target: dict) -> bool:
     return changed
 
 
-def _power_binding_needs_backfill(hass: HomeAssistant, entity_id: str | None) -> bool:
+def _power_binding_needs_backfill(
+    hass: HomeAssistant,
+    entity_id: str | None,
+    preferred: str,
+    switch_entity: str | None,
+) -> bool:
     if not entity_id:
         return True
     state = hass.states.get(entity_id)
-    return state is None or state.state in ("unknown", "unavailable")
+    if state is None or state.state in ("unknown", "unavailable"):
+        return True
+    if entity_id == preferred:
+        return False
+    return entity_id in _suggest.profile_power_candidates(hass, switch_entity)
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:

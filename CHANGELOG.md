@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.4
+
+- Migrate known Einhornzentrale plug power bindings from missing or old
+  raw/atomic plug sensors to their Core Devices sources when available, while
+  preserving unrelated custom power sensors.
+
 ## 0.1.3
 
 - Bump the ConfigEntry `VERSION` to 3 so Home Assistant actually runs the
