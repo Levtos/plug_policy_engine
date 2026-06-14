@@ -231,7 +231,7 @@ class PlugPolicyCoordinator:
         return s.lower() in ("on", "true", "1", "active", "playing")
 
     def _resolve_power_entity(self, cfg: DeviceConfig) -> str | None:
-        if cfg.power_entity:
+        if cfg.power_entity and self.hass.states.get(cfg.power_entity) is not None:
             return cfg.power_entity
         for entity_id in _PROFILE_POWER_BY_SWITCH.get(cfg.switch_entity, ()):
             if self.hass.states.get(entity_id) is not None:

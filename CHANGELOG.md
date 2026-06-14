@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.9
+
+- Replace missing saved profile power bindings, such as stale `_power_atomic`
+  sensors, with known Core Devices sources during coordinator refresh.
+
 ## 0.1.8
 
 - Add a coordinator-local power source fallback for known Einhornzentrale plug
