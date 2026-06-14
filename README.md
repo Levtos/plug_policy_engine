@@ -167,5 +167,9 @@ Die Decision-Engine läuft ohne Home-Assistant-Mock. Abgedeckt:
 
 - Schalt-Calls (`switch.turn_on/off`) werden nur abgesetzt, wenn der aktuelle
   Schalterzustand vom gewünschten abweicht.
+- Gleichartige In-Flight-Schalt-Calls werden pro Gerät gedrosselt, bis Home
+  Assistant den Zielzustand zurückmeldet oder ein kurzer Retry-Guard abläuft.
+- `plug_policy_engine.set_enable_control` persistiert Shadow/Live in der
+  Config Entry, damit der Gate-Zustand Reloads und Neustarts überlebt.
 - Ohne `enable_control` liefert die Integration ausschließlich Entscheidungs-Sensoren.
 - Keine blocking I/O im Eventloop.

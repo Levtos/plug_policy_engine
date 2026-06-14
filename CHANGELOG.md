@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.10
+
+- Throttle duplicate in-flight `switch.turn_on/off` calls per device so fast
+  state-change feedback loops cannot repeatedly fire the same plug action while
+  Home Assistant has not yet reported the target switch state.
+- Persist `set_enable_control` changes back to the Config Entry so Shadow/Live
+  survives integration reloads and Home Assistant restarts.
+
 ## 0.1.9
 
 - Replace missing saved profile power bindings, such as stale `_power_atomic`

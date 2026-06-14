@@ -73,6 +73,8 @@ _PROFILE_POWER_BY_SWITCH = {
     "switch.kitchen_dishwasher_plug": ("sensor.benni_device_kitchen_dishwasher",),
 }
 
+_ACTION_RETRY_SECONDS = 10.0
+
 
 class PlugPolicyCoordinator:
     """Liest HA-State, ruft die reine Engine, exposes Decisions, treibt Switches optional."""
@@ -131,6 +133,7 @@ class PlugPolicyCoordinator:
         self.states: dict[str, DeviceState] = {dev_id: DeviceState() for dev_id in self.configs}
         self.decisions: dict[str, Decision] = {}
         self.last_action: dict[str, dict[str, Any]] = {}
+        self._pending_actions: dict[str, dict[str, Any]] = {}
         self.last_context: dict[str, Any] = {}
         self.last_update_ts: float | None = None
 
@@ -254,6 +257,7 @@ class PlugPolicyCoordinator:
     def _refresh_device_state(self, cfg: DeviceConfig) -> DeviceState:
         st = self.states[cfg.device_id]
         st.switch_state = self._read_str(cfg.switch_entity)
+        self._clear_pending_action_if_reached(cfg.device_id, st.switch_state)
         st.power_w = self._read_power(self._resolve_power_entity(cfg))
         st.battery_pct = self._read_str(cfg.battery_entity) if cfg.battery_entity else None
         return st
@@ -295,15 +299,32 @@ class PlugPolicyCoordinator:
 
     async def _apply_decision(self, cfg: DeviceConfig, st: DeviceState, dec: Decision) -> None:
         if dec.desired_switch_state == DESIRED_KEEP:
+            self._pending_actions.pop(cfg.device_id, None)
             return
         target = "turn_on" if dec.desired_switch_state == DESIRED_ON else "turn_off"
+        target_state = "on" if dec.desired_switch_state == DESIRED_ON else "off"
         current = (st.switch_state or "").lower()
-        if (target == "turn_on" and current == "on") or (target == "turn_off" and current == "off"):
+        if current == target_state:
+            self._pending_actions.pop(cfg.device_id, None)
+            return
+
+        now_ts = dt_util.utcnow().timestamp()
+        pending = self._pending_actions.get(cfg.device_id)
+        if (
+            pending
+            and pending.get("service") == target
+            and now_ts - float(pending.get("ts") or 0.0) < _ACTION_RETRY_SECONDS
+        ):
             return
         try:
             await self.hass.services.async_call(
                 "switch", target, {}, blocking=False, target={"entity_id": cfg.switch_entity},
             )
+            self._pending_actions[cfg.device_id] = {
+                "service": target,
+                "state": target_state,
+                "ts": now_ts,
+            }
             self.last_action[cfg.device_id] = {
                 "action": target,
                 "reason": dec.reason,
@@ -317,6 +338,13 @@ class PlugPolicyCoordinator:
                 "plug_policy_engine: switch call failed for %s: %s", cfg.switch_entity, err,
             )
 
+    def _clear_pending_action_if_reached(self, device_id: str, switch_state: str | None) -> None:
+        pending = self._pending_actions.get(device_id)
+        if not pending or switch_state is None:
+            return
+        if switch_state.lower() == pending.get("state"):
+            self._pending_actions.pop(device_id, None)
+
     # ---------- service helpers ----------
     async def async_suspend(self, device_id: str, suspend: bool) -> None:
         if device_id in self.states:
@@ -325,6 +353,17 @@ class PlugPolicyCoordinator:
 
     async def async_set_enable_control(self, enabled: bool) -> None:
         self.enable_control = enabled
+        data = dict(self.entry.data)
+        options = dict(self.entry.options)
+        if CONF_ENABLE_CONTROL in options:
+            options[CONF_ENABLE_CONTROL] = enabled
+        else:
+            data[CONF_ENABLE_CONTROL] = enabled
+        self.hass.config_entries.async_update_entry(
+            self.entry,
+            data=data,
+            options=options,
+        )
         await self.async_evaluate_all()
 
     async def async_mark_manual_on(self, device_id: str) -> None:
