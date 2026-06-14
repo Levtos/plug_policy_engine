@@ -368,7 +368,7 @@ def test_config_flow_version_matches_power_source_migration():
                     and isinstance(stmt.value, ast.Constant)
                 ):
                     version = stmt.value.value
-    assert version == 6
+    assert version == 7
 
 
 def test_power_source_migration_prefers_core_device_for_known_profile_source():

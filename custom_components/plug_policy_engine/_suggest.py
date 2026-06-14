@@ -100,6 +100,10 @@ def _has_entity(hass, entity_id: str | None) -> bool:
     """Return True when an entity_id is known to HA."""
     if not entity_id:
         return False
+    states = getattr(hass, "states", None)
+    getter = getattr(states, "get", None)
+    if callable(getter) and getter(entity_id) is not None:
+        return True
     domain = entity_id.split(".", 1)[0] if "." in entity_id else None
     return entity_id in _entity_ids(hass, domain)
 

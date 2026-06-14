@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.7
+
+- Prefer direct `hass.states.get(entity_id)` checks when resolving profile
+  entities, so coordinator startup/refresh can find Core Devices sensors even
+  if `async_entity_ids()` is incomplete during setup.
+
 ## 0.1.6
 
 - Resolve missing profile power entities during each coordinator refresh, so
