@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.12
+
+- Add a hard sleep guard for `bias_light` devices so entertainment/media context
+  cannot turn the bias plug on while `bio=sleep`.
+- Add regression coverage for the sleep-over-entertainment case before enabling
+  persistent Apply mode.
+
 ## 0.1.11
 
 - Make `apply_policy_now(device_id=...)` apply only the selected device instead

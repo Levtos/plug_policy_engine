@@ -420,6 +420,11 @@ def _decide_appliance(cfg, state, ctx, active_state, make) -> Decision:
 
 def _decide_bias_light(cfg, state, ctx, make) -> Decision:
     """Bias Light follows entertainment_active / media_context, not legacy activity states."""
+    if ctx.asleep:
+        if state.switch_state == "off":
+            return make(DESIRED_KEEP, "bias light: sleep — already off", ["bio=sleep"])
+        return make(DESIRED_OFF, "bias light: stop on sleep", ["bio=sleep"])
+
     ent = ctx.entertainment_active
     media = (ctx.media_context or "").lower()
     want_on = bool(ent) or media in {"movie", "tv", "video"}

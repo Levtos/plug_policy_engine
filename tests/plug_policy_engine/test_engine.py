@@ -250,6 +250,14 @@ def test_bias_light_off_when_idle_media():
     assert d.desired_switch_state == C.DESIRED_OFF
 
 
+def test_bias_light_sleep_blocks_entertainment_active():
+    cfg = _cfg(kind=C.KIND_BIAS_LIGHT, policy=C.POLICY_HB)
+    d = E.evaluate(cfg, _state(switch_state="on"),
+                   _ctx(bio=C.BIO_SLEEP, media_context="movie", entertainment_active=True))
+    assert d.desired_switch_state == C.DESIRED_OFF
+    assert "bio=sleep" in d.blockers
+
+
 # --------------------------------------------------------------- diffuser
 
 
