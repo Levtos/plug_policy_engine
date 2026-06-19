@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.13
+
+- Avoid removing the one-shot Home Assistant started listener after it has
+  already fired, preventing a noisy restart/shutdown system-log error.
+
 ## 0.1.12
 
 - Add a hard sleep guard for `bias_light` devices so entertainment/media context

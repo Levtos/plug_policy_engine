@@ -86,6 +86,7 @@ class PlugPolicyCoordinator:
             hass, MODULE_ID, f"state_{entry.entry_id}", version=STORAGE_VERSION
         )
         self._unsub: list = []
+        self._unsub_started = None
         self._listeners: list = []
         self._ha_started = False
 
@@ -161,9 +162,10 @@ class PlugPolicyCoordinator:
         if self.hass.is_running:
             self._ha_started = True
         else:
-            self._unsub.append(
-                self.hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STARTED, self._on_started)
+            self._unsub_started = self.hass.bus.async_listen_once(
+                EVENT_HOMEASSISTANT_STARTED, self._on_started
             )
+            self._unsub.append(self._unsub_started)
 
         watch = set()
         for v in self.global_entities.values():
@@ -196,6 +198,9 @@ class PlugPolicyCoordinator:
     @callback
     def _on_started(self, _event) -> None:
         self._ha_started = True
+        if self._unsub_started in self._unsub:
+            self._unsub.remove(self._unsub_started)
+        self._unsub_started = None
         self.hass.async_create_task(self.async_evaluate_all(ha_just_started=True))
 
     @callback
