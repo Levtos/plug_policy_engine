@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.14
+
+- Add a hard 30 second command cooldown for `switch.kitchen_diffuser_plug` so
+  brief successful state reads cannot clear the pending-action guard and
+  trigger a `turn_on` storm when the plug flaps back to `off`.
+
 ## 0.1.13
 
 - Avoid removing the one-shot Home Assistant started listener after it has

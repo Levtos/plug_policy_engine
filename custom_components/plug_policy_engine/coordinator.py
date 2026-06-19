@@ -74,6 +74,9 @@ _PROFILE_POWER_BY_SWITCH = {
 }
 
 _ACTION_RETRY_SECONDS = 10.0
+_ENTITY_COMMAND_COOLDOWN_SECONDS = {
+    "switch.kitchen_diffuser_plug": 30.0,
+}
 
 
 class PlugPolicyCoordinator:
@@ -135,6 +138,8 @@ class PlugPolicyCoordinator:
         self.decisions: dict[str, Decision] = {}
         self.last_action: dict[str, dict[str, Any]] = {}
         self._pending_actions: dict[str, dict[str, Any]] = {}
+        self._last_command_ts_by_entity: dict[str, float] = {}
+        self._last_cooldown_warning_ts_by_entity: dict[str, float] = {}
         self.last_context: dict[str, Any] = {}
         self.last_update_ts: float | None = None
 
@@ -323,6 +328,24 @@ class PlugPolicyCoordinator:
             return
 
         now_ts = dt_util.utcnow().timestamp()
+        cooldown = _ENTITY_COMMAND_COOLDOWN_SECONDS.get(cfg.switch_entity)
+        last_command_ts = self._last_command_ts_by_entity.get(cfg.switch_entity)
+        if (
+            cooldown is not None
+            and last_command_ts is not None
+            and now_ts - last_command_ts < cooldown
+        ):
+            last_warning_ts = self._last_cooldown_warning_ts_by_entity.get(cfg.switch_entity)
+            if last_warning_ts is None or now_ts - last_warning_ts >= cooldown:
+                self._last_cooldown_warning_ts_by_entity[cfg.switch_entity] = now_ts
+                _LOGGER.warning(
+                    "plug_policy_engine: skipped %s on %s due to %.0fs command cooldown",
+                    target,
+                    cfg.switch_entity,
+                    cooldown,
+                )
+            return
+
         pending = self._pending_actions.get(cfg.device_id)
         if (
             pending
@@ -339,6 +362,7 @@ class PlugPolicyCoordinator:
                 "state": target_state,
                 "ts": now_ts,
             }
+            self._last_command_ts_by_entity[cfg.switch_entity] = now_ts
             self.last_action[cfg.device_id] = {
                 "action": target,
                 "reason": dec.reason,

@@ -256,3 +256,34 @@ async def test_apply_now_with_device_only_calls_selected_switch():
     ]
     assert "target_plug" in coord.decisions
     assert "other_plug" not in coord.decisions
+
+
+@smoke._run
+async def test_kitchen_diffuser_command_cooldown_survives_brief_target_state():
+    mod = _load_coordinator_module()
+    hass = _FakeHass({
+        "switch.kitchen_diffuser_plug": _FakeState("off"),
+    })
+    entry = _FakeEntry({
+        "enable_control": False,
+        "devices": [
+            {
+                "device_id": "kitchen_diffuser_plug",
+                "name": "Kitchen Diffuser",
+                "switch_entity": "switch.kitchen_diffuser_plug",
+                "policy": "AO",
+                "kind": "diffuser",
+            },
+        ],
+    })
+    coord = mod.PlugPolicyCoordinator(hass, entry)
+    cfg = coord.configs["kitchen_diffuser_plug"]
+
+    await coord.async_apply_now("kitchen_diffuser_plug")
+    hass.states._states["switch.kitchen_diffuser_plug"] = _FakeState("on")
+    coord._refresh_device_state(cfg)
+    hass.states._states["switch.kitchen_diffuser_plug"] = _FakeState("off")
+
+    await coord.async_apply_now("kitchen_diffuser_plug")
+
+    assert [call["service"] for call in hass.services.calls] == ["turn_on"]
