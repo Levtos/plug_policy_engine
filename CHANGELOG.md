@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.15
+
+- Log kitchen diffuser command-cooldown skips at debug level instead of warning
+  level so expected cooldown suppression does not appear as a Home Assistant
+  integration error.
+
 ## 0.1.14
 
 - Add a hard 30 second command cooldown for `switch.kitchen_diffuser_plug` so
