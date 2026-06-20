@@ -30,6 +30,8 @@ def _load(modname: str, filename: str):
 
 const = _load("const", "const.py")
 engine = _load("engine", "engine.py")
+apply_guard = _load("apply_guard", "apply_guard.py")
 
 sys.modules["pp_const"] = const
 sys.modules["pp_engine"] = engine
+sys.modules["pp_apply_guard"] = apply_guard

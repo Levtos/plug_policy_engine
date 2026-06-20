@@ -61,6 +61,7 @@ from .const import (
     STORAGE_VERSION,
 )
 from . import _suggest
+from .apply_guard import MIN_COMMAND_INTERVAL_SECONDS, debounce_suppresses
 from .engine import Decision, DeviceConfig, DeviceState, GlobalContext, evaluate
 from .storage import make_store
 
@@ -74,9 +75,10 @@ _PROFILE_POWER_BY_SWITCH = {
 }
 
 _ACTION_RETRY_SECONDS = 10.0
-_ENTITY_COMMAND_COOLDOWN_SECONDS = {
-    "switch.kitchen_diffuser_plug": 30.0,
-}
+# Optional per-entity overrides for the command de-bounce window. Every switch
+# is de-bounced by MIN_COMMAND_INTERVAL_SECONDS by default (see apply_guard);
+# entries here only override that default for a specific entity.
+_ENTITY_COMMAND_COOLDOWN_SECONDS: dict[str, float] = {}
 
 
 class PlugPolicyCoordinator:
@@ -138,7 +140,11 @@ class PlugPolicyCoordinator:
         self.decisions: dict[str, Decision] = {}
         self.last_action: dict[str, dict[str, Any]] = {}
         self._pending_actions: dict[str, dict[str, Any]] = {}
-        self._last_command_ts_by_entity: dict[str, float] = {}
+        # Last command actually *sent* per switch entity, as (service, ts).
+        # Drives the de-bounce; deliberately NOT cleared when the target state
+        # is reached, so a flapping/non-latching plug cannot trigger an
+        # immediate re-assert (FLEET-107).
+        self._last_command_by_entity: dict[str, tuple[str, float]] = {}
         self._last_cooldown_log_ts_by_entity: dict[str, float] = {}
         self.last_context: dict[str, Any] = {}
         self.last_update_ts: float | None = None
@@ -328,18 +334,21 @@ class PlugPolicyCoordinator:
             return
 
         now_ts = dt_util.utcnow().timestamp()
-        cooldown = _ENTITY_COMMAND_COOLDOWN_SECONDS.get(cfg.switch_entity)
-        last_command_ts = self._last_command_ts_by_entity.get(cfg.switch_entity)
-        if (
-            cooldown is not None
-            and last_command_ts is not None
-            and now_ts - last_command_ts < cooldown
+        cooldown = _ENTITY_COMMAND_COOLDOWN_SECONDS.get(
+            cfg.switch_entity, MIN_COMMAND_INTERVAL_SECONDS
+        )
+        if debounce_suppresses(
+            self._last_command_by_entity.get(cfg.switch_entity),
+            target,
+            now_ts,
+            cooldown,
         ):
             last_log_ts = self._last_cooldown_log_ts_by_entity.get(cfg.switch_entity)
             if last_log_ts is None or now_ts - last_log_ts >= cooldown:
                 self._last_cooldown_log_ts_by_entity[cfg.switch_entity] = now_ts
                 _LOGGER.debug(
-                    "plug_policy_engine: skipped %s on %s due to %.0fs command cooldown",
+                    "plug_policy_engine: skipped %s on %s due to %.0fs command cooldown "
+                    "(non-latching plug re-assert)",
                     target,
                     cfg.switch_entity,
                     cooldown,
@@ -362,7 +371,7 @@ class PlugPolicyCoordinator:
                 "state": target_state,
                 "ts": now_ts,
             }
-            self._last_command_ts_by_entity[cfg.switch_entity] = now_ts
+            self._last_command_by_entity[cfg.switch_entity] = (target, now_ts)
             self.last_action[cfg.device_id] = {
                 "action": target,
                 "reason": dec.reason,
