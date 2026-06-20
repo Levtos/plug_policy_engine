@@ -42,3 +42,44 @@ def test_default_interval_is_thirty_seconds():
     last = ("turn_on", 0.0)
     # uses the module default when interval is omitted
     assert G.debounce_suppresses(last, "turn_on", now_ts=10.0) is True
+
+
+def test_reassert_history_suspends_on_threshold():
+    history = []
+    should_suspend = False
+    for now_ts in (0.0, 60.0, 120.0, 180.0, 240.0):
+        history, should_suspend = G.record_reassert_and_should_suspend(
+            history,
+            "turn_on",
+            now_ts,
+            threshold=5,
+            window=600.0,
+        )
+    assert len(history) == 5
+    assert should_suspend is True
+
+
+def test_reassert_history_ignores_opposite_direction():
+    history = [("turn_off", 0.0), ("turn_on", 60.0)]
+    history, should_suspend = G.record_reassert_and_should_suspend(
+        history,
+        "turn_on",
+        120.0,
+        threshold=3,
+        window=600.0,
+    )
+    assert history == [("turn_on", 60.0), ("turn_on", 120.0)]
+    assert should_suspend is False
+
+
+def test_reassert_history_prunes_old_attempts():
+    history = [("turn_on", 0.0), ("turn_on", 60.0)]
+    history, should_suspend = G.record_reassert_and_should_suspend(
+        history,
+        "turn_on",
+        700.0,
+        threshold=3,
+        window=600.0,
+    )
+    assert history == [("turn_on", 700.0)]
+    assert should_suspend is False

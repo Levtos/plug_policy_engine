@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.1.17
+
+- Auto-suspend a device policy after repeated same-direction re-asserts to the same switch within the non-latch detection window, preventing slow relay churn that survives the command debounce.
+- Resume an auto-suspended device only after the target state stays latched beyond the debounce interval.
+- Add pure guard coverage plus coordinator regression coverage for repeated non-latching re-asserts.
+
+## 0.1.16
+
+- Generalize the hard 30 second command de-bounce from the kitchen diffuser plug to every managed switch.
+- Keep opposite-direction commands immediate so real stop/sleep/away cuts are never delayed.
+
 ## 0.1.15
 
 - Log kitchen diffuser command-cooldown skips at debug level instead of warning

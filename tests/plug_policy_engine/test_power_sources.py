@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import sys
 import types
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 
 import tests.plug_policy_engine.test_module_smoke as smoke  # noqa: E402
@@ -288,3 +288,43 @@ async def test_kitchen_diffuser_command_cooldown_survives_brief_target_state():
     await coord.async_apply_now("kitchen_diffuser_plug")
 
     assert [call["service"] for call in hass.services.calls] == ["turn_on"]
+
+
+@smoke._run
+async def test_repeated_non_latch_reasserts_auto_suspend_device():
+    mod = _load_coordinator_module()
+    clock = {"ts": 0}
+    original_utcnow = mod.dt_util.utcnow
+    mod.dt_util.utcnow = lambda: datetime(2026, 6, 14) + timedelta(seconds=clock["ts"])
+    try:
+        hass = _FakeHass({
+            "switch.flaky_plug": _FakeState("off"),
+        })
+        entry = _FakeEntry({
+            "enable_control": False,
+            "devices": [
+                {
+                    "device_id": "flaky_plug",
+                    "name": "Flaky Plug",
+                    "switch_entity": "switch.flaky_plug",
+                    "policy": "AO",
+                    "kind": "generic",
+                },
+            ],
+        })
+        coord = mod.PlugPolicyCoordinator(hass, entry)
+
+        for ts in (0, 60, 120, 180, 240):
+            clock["ts"] = ts
+            hass.states._states["switch.flaky_plug"] = _FakeState("off")
+            await coord.async_apply_now("flaky_plug")
+
+        assert [call["service"] for call in hass.services.calls] == ["turn_on"] * 5
+        assert coord.states["flaky_plug"].suspended is True
+
+        clock["ts"] = 300
+        await coord.async_apply_now("flaky_plug")
+
+        assert [call["service"] for call in hass.services.calls] == ["turn_on"] * 5
+    finally:
+        mod.dt_util.utcnow = original_utcnow

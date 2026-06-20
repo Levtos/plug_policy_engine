@@ -61,7 +61,11 @@ from .const import (
     STORAGE_VERSION,
 )
 from . import _suggest
-from .apply_guard import MIN_COMMAND_INTERVAL_SECONDS, debounce_suppresses
+from .apply_guard import (
+    MIN_COMMAND_INTERVAL_SECONDS,
+    debounce_suppresses,
+    record_reassert_and_should_suspend,
+)
 from .engine import Decision, DeviceConfig, DeviceState, GlobalContext, evaluate
 from .storage import make_store
 
@@ -146,6 +150,8 @@ class PlugPolicyCoordinator:
         # immediate re-assert (FLEET-107).
         self._last_command_by_entity: dict[str, tuple[str, float]] = {}
         self._last_cooldown_log_ts_by_entity: dict[str, float] = {}
+        self._reassert_history_by_entity: dict[str, list[tuple[str, float]]] = {}
+        self._auto_suspended_by_device: dict[str, dict[str, Any]] = {}
         self.last_context: dict[str, Any] = {}
         self.last_update_ts: float | None = None
 
@@ -305,6 +311,7 @@ class PlugPolicyCoordinator:
         ha_just_started: bool = False,
     ) -> None:
         st = self._refresh_device_state(cfg)
+        self._resume_auto_suspended_if_stable(cfg, st, ctx.now_ts)
         decision = evaluate(cfg, st, ctx, ha_just_started=ha_just_started)
         self.decisions[cfg.device_id] = decision
         if decision.active_state == "idle":
@@ -321,6 +328,33 @@ class PlugPolicyCoordinator:
 
         if self.enable_control:
             await self._apply_decision(cfg, st, decision)
+
+    def _resume_auto_suspended_if_stable(
+        self,
+        cfg: DeviceConfig,
+        st: DeviceState,
+        now_ts: float,
+    ) -> None:
+        auto = self._auto_suspended_by_device.get(cfg.device_id)
+        if not st.suspended or not auto:
+            return
+        target_state = auto.get("state")
+        sent_ts = float(auto.get("ts") or 0.0)
+        if (
+            st.switch_state
+            and st.switch_state.lower() == target_state
+            and now_ts - sent_ts >= MIN_COMMAND_INTERVAL_SECONDS
+        ):
+            st.suspended = False
+            self._auto_suspended_by_device.pop(cfg.device_id, None)
+            self._reassert_history_by_entity.pop(cfg.switch_entity, None)
+            _LOGGER.info(
+                "plug_policy_engine: resumed %s after %s stayed %s for %.0fs",
+                cfg.device_id,
+                cfg.switch_entity,
+                target_state,
+                MIN_COMMAND_INTERVAL_SECONDS,
+            )
 
     async def _apply_decision(self, cfg: DeviceConfig, st: DeviceState, dec: Decision) -> None:
         if dec.desired_switch_state == DESIRED_KEEP:
@@ -372,6 +406,27 @@ class PlugPolicyCoordinator:
                 "ts": now_ts,
             }
             self._last_command_by_entity[cfg.switch_entity] = (target, now_ts)
+            history, should_suspend = record_reassert_and_should_suspend(
+                self._reassert_history_by_entity.get(cfg.switch_entity, ()),
+                target,
+                now_ts,
+            )
+            self._reassert_history_by_entity[cfg.switch_entity] = history
+            if should_suspend:
+                st.suspended = True
+                self._auto_suspended_by_device[cfg.device_id] = {
+                    "service": target,
+                    "state": target_state,
+                    "ts": now_ts,
+                }
+                _LOGGER.warning(
+                    "plug_policy_engine: auto-suspended %s (%s) after %d repeated "
+                    "%s commands; plug appears non-latching",
+                    cfg.device_id,
+                    cfg.switch_entity,
+                    len(history),
+                    target,
+                )
             self.last_action[cfg.device_id] = {
                 "action": target,
                 "reason": dec.reason,
