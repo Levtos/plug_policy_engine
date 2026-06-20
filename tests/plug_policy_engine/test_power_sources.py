@@ -107,6 +107,7 @@ def _load_coordinator_module():
     src = (MODULE_DIR / "coordinator.py").read_text(encoding="utf-8")
     src = src.replace("from .const import", "from pp_const import")
     src = src.replace("from . import _suggest", "import pp_suggest_stub as _suggest")
+    src = src.replace("from .apply_guard import", "from pp_apply_guard import")
     src = src.replace("from .engine import", "from pp_engine import")
     src = src.replace("from .storage import make_store", "from pp_storage_stub import make_store")
     mod = types.ModuleType("pp_coordinator_real_power_test")
