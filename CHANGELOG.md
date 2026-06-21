@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.1.18
+
+- Rebind profile power-source candidates for PC, Denon, PS5, Switch, and TV
+  plugs to the existing Core-Devices masters.
+- Migrate saved `sensor.benni_device_*` power bindings to the corresponding
+  `sensor.benni_master_*` source during ConfigEntry migration.
+- Treat master boolean attributes (`is_active`, `powered`, `watt_active`,
+  `protection_relevant`) as semantic active/idle input before falling back to
+  watt attributes, so masters with `watt=0` can still protect active devices.
+
 ## 0.1.17
 
 - Auto-suspend a device policy after repeated same-direction re-asserts to the same switch within the non-latch detection window, preventing slow relay churn that survives the command debounce.

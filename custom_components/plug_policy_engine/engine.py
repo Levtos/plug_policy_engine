@@ -123,6 +123,8 @@ class Decision:
 # Helpers
 # --------------------------------------------------------------------------- #
 _UNKNOWN_STRINGS = {"unknown", "unavailable", "none", ""}
+_ACTIVE_STRINGS = {"active", "on", "playing", "true"}
+_IDLE_STRINGS = {"idle", "off", "standby", "false", "inactive"}
 
 
 def _power_float(p: Any) -> Optional[float]:
@@ -155,6 +157,12 @@ def _battery_int(b: Any) -> Optional[int]:
 
 def _classify_active(cfg: DeviceConfig, state: DeviceState) -> str:
     """Return 'active' / 'idle' / 'unknown'."""
+    if isinstance(state.power_w, str):
+        semantic = state.power_w.strip().lower()
+        if semantic in _ACTIVE_STRINGS:
+            return "active"
+        if semantic in _IDLE_STRINGS:
+            return "idle"
     p = _power_float(state.power_w)
     if p is None:
         # No power sensor at all → unknown

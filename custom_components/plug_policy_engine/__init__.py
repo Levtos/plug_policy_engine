@@ -20,6 +20,7 @@ from .const import (
     DATA_WS_REGISTERED,
     DOMAIN,
     LEGACY_GLOBAL_SOURCE_MAP,
+    LEGACY_POWER_SOURCE_MAP,
     MODULE_ID,
     service_name,
 )
@@ -97,12 +98,12 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         if _backfill_profile_power_entities(hass, target):
             changed = True
 
-    if changed or entry.version < 4:
+    if changed or entry.version < 10:
         hass.config_entries.async_update_entry(
             entry,
             data=data,
             options=options,
-            version=4,
+            version=10,
         )
         _LOGGER.info("Migrated plug_policy_engine sources to Core devices/state")
     return True
@@ -120,6 +121,10 @@ def _backfill_profile_power_entities(hass: HomeAssistant, target: dict) -> bool:
             new_devices.append(item)
             continue
         device = dict(item)
+        power_entity = device.get(CONF_POWER)
+        if isinstance(power_entity, str) and power_entity in LEGACY_POWER_SOURCE_MAP:
+            device[CONF_POWER] = LEGACY_POWER_SOURCE_MAP[power_entity]
+            changed = True
         switch_entity = device.get(CONF_SWITCH)
         preferred = _suggest.profile_power_entity(hass, switch_entity)
         if preferred and _power_binding_needs_backfill(

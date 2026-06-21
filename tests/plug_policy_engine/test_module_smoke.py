@@ -368,7 +368,7 @@ def test_config_flow_version_matches_power_source_migration():
                     and isinstance(stmt.value, ast.Constant)
                 ):
                     version = stmt.value.value
-    assert version == 9
+    assert version == 10
 
 
 def test_power_source_migration_prefers_core_device_for_known_profile_source():
@@ -382,7 +382,7 @@ def test_power_source_migration_prefers_core_device_for_known_profile_source():
     end = full_init_src.index("\n\nasync def async_unload_entry")
     init_src = (
         "from __future__ import annotations\n"
-        "from pp_const import CONF_DEVICES, CONF_POWER, CONF_SWITCH\n"
+        "from pp_const import CONF_DEVICES, CONF_POWER, CONF_SWITCH, LEGACY_POWER_SOURCE_MAP\n"
         "import pp_suggest_migration_test as _suggest\n\n"
         + full_init_src[start:end]
     )
@@ -407,7 +407,7 @@ def test_power_source_migration_prefers_core_device_for_known_profile_source():
 
     hass = types.SimpleNamespace(states=_States([
         "switch.living_pc_plug",
-        "sensor.benni_device_living_pc",
+        "sensor.benni_master_pc",
         "sensor.living_pc_plug_power",
         "sensor.custom_power_meter",
     ]))
@@ -421,15 +421,20 @@ def test_power_source_migration_prefers_core_device_for_known_profile_source():
             },
             {
                 "switch_entity": "switch.living_pc_plug",
+                "power_entity": "sensor.benni_device_living_pc",
+            },
+            {
+                "switch_entity": "switch.living_pc_plug",
                 "power_entity": "sensor.custom_power_meter",
             },
         ]
     }
 
     assert init_mod._backfill_profile_power_entities(hass, target) is True
-    assert target["devices"][0]["power_entity"] == "sensor.benni_device_living_pc"
-    assert target["devices"][1]["power_entity"] == "sensor.benni_device_living_pc"
-    assert target["devices"][2]["power_entity"] == "sensor.custom_power_meter"
+    assert target["devices"][0]["power_entity"] == "sensor.benni_master_pc"
+    assert target["devices"][1]["power_entity"] == "sensor.benni_master_pc"
+    assert target["devices"][2]["power_entity"] == "sensor.benni_master_pc"
+    assert target["devices"][3]["power_entity"] == "sensor.custom_power_meter"
 
 
 def test_suspend_schema_requires_device_id():

@@ -125,6 +125,14 @@ LEGACY_GLOBAL_SOURCE_MAP: Final[dict[str, str]] = {
     "binary_sensor.benni_media_context_entertainment_active": GLOBAL_PREFILL[CONF_ENTERTAINMENT],
 }
 
+LEGACY_POWER_SOURCE_MAP: Final[dict[str, str]] = {
+    "sensor.benni_device_living_pc": "sensor.benni_master_pc",
+    "sensor.benni_device_living_avr": "sensor.benni_master_denon",
+    "sensor.benni_device_ps5": "sensor.benni_master_ps5",
+    "sensor.benni_device_living_switch_plug": "sensor.benni_master_switch",
+    "sensor.benni_device_living_tv": "sensor.benni_master_tv",
+}
+
 # Behavior
 CONF_ENABLE_CONTROL = "enable_control"
 CONF_SCAN_INTERVAL = "scan_interval"

@@ -7,6 +7,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 import tests.plug_policy_engine.test_module_smoke as smoke  # noqa: E402
+import pp_engine as engine  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[2]
 MODULE_DIR = ROOT / "custom_components" / "plug_policy_engine"
@@ -96,9 +97,9 @@ def _load_coordinator_module():
 
     def _profile_power_entity(hass, switch_entity):
         if switch_entity == "switch.living_pc_plug" and hass.states.get(
-            "sensor.benni_device_living_pc"
+            "sensor.benni_master_pc"
         ):
-            return "sensor.benni_device_living_pc"
+            return "sensor.benni_master_pc"
         return None
 
     suggest_stub.profile_power_entity = _profile_power_entity
@@ -129,16 +130,59 @@ def test_read_power_uses_watt_attribute_for_core_device_sensor():
     mod = _load_coordinator_module()
     coord = mod.PlugPolicyCoordinator.__new__(mod.PlugPolicyCoordinator)
     coord.hass = _FakeHass({
-        "sensor.benni_device_living_pc": _FakeState("on", {"watt": 170.0}),
+        "sensor.benni_master_pc": _FakeState("on", {"watt": 170.0}),
     })
-    assert coord._read_power("sensor.benni_device_living_pc") == 170.0
+    assert coord._read_power("sensor.benni_master_pc") == 170.0
+
+
+def test_read_power_uses_master_active_attribute_before_zero_watt():
+    mod = _load_coordinator_module()
+    coord = mod.PlugPolicyCoordinator.__new__(mod.PlugPolicyCoordinator)
+    coord.hass = _FakeHass({
+        "sensor.benni_master_switch": _FakeState(
+            "active",
+            {"is_active": True, "watt": 0.0},
+        ),
+    })
+
+    assert coord._read_power("sensor.benni_master_switch") == "active"
+
+
+def test_read_power_uses_master_inactive_attribute_before_nonzero_watt():
+    mod = _load_coordinator_module()
+    coord = mod.PlugPolicyCoordinator.__new__(mod.PlugPolicyCoordinator)
+    coord.hass = _FakeHass({
+        "sensor.benni_master_tv": _FakeState(
+            "off",
+            {"is_active": False, "watt": 39.0},
+        ),
+    })
+
+    assert coord._read_power("sensor.benni_master_tv") == "idle"
+
+
+def test_engine_classifies_semantic_master_power_values():
+    cfg = engine.DeviceConfig(
+        device_id="switch",
+        name="Switch",
+        switch_entity="switch.living_switch_plug",
+        power_entity="sensor.benni_master_switch",
+        active_threshold=50.0,
+        idle_threshold=5.0,
+    )
+
+    active = engine.evaluate(cfg, engine.DeviceState(switch_state="on", power_w="active"), engine.GlobalContext())
+    idle = engine.evaluate(cfg, engine.DeviceState(switch_state="on", power_w="idle"), engine.GlobalContext())
+
+    assert active.active_state == "active"
+    assert idle.active_state == "idle"
 
 
 def test_coordinator_backfills_missing_profile_power_entity_at_runtime():
     mod = _load_coordinator_module()
     hass = _FakeHass({
         "switch.living_pc_plug": _FakeState("on"),
-        "sensor.benni_device_living_pc": _FakeState("on", {"watt": 170.0}),
+        "sensor.benni_master_pc": _FakeState("on", {"watt": 170.0}),
     })
     entry = _FakeEntry({
         "devices": [
@@ -154,7 +198,7 @@ def test_coordinator_backfills_missing_profile_power_entity_at_runtime():
 
     coord = mod.PlugPolicyCoordinator(hass, entry)
 
-    assert coord.configs["living_pc_plug"].power_entity == "sensor.benni_device_living_pc"
+    assert coord.configs["living_pc_plug"].power_entity == "sensor.benni_master_pc"
     assert coord._refresh_device_state(coord.configs["living_pc_plug"]).power_w == 170.0
 
 
@@ -178,20 +222,20 @@ def test_coordinator_resolves_profile_power_after_core_device_appears():
     cfg = coord.configs["living_pc_plug"]
     assert cfg.power_entity is None
 
-    hass.states._states["sensor.benni_device_living_pc"] = _FakeState(
+    hass.states._states["sensor.benni_master_pc"] = _FakeState(
         "on",
         {"watt": 170.0},
     )
 
     assert coord._refresh_device_state(cfg).power_w == 170.0
-    assert cfg.power_entity == "sensor.benni_device_living_pc"
+    assert cfg.power_entity == "sensor.benni_master_pc"
 
 
 def test_coordinator_replaces_missing_saved_profile_power_entity():
     mod = _load_coordinator_module()
     hass = _FakeHass({
         "switch.living_pc_plug": _FakeState("on"),
-        "sensor.benni_device_living_pc": _FakeState("on", {"watt": 170.0}),
+        "sensor.benni_master_pc": _FakeState("on", {"watt": 170.0}),
     })
     entry = _FakeEntry({
         "devices": [
@@ -209,7 +253,7 @@ def test_coordinator_replaces_missing_saved_profile_power_entity():
     cfg = coord.configs["living_pc_plug"]
 
     assert coord._refresh_device_state(cfg).power_w == 170.0
-    assert cfg.power_entity == "sensor.benni_device_living_pc"
+    assert cfg.power_entity == "sensor.benni_master_pc"
 
 
 def test_read_power_preserves_unknown_when_no_numeric_power_exists():

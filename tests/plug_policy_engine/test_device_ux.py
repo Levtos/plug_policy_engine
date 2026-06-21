@@ -209,10 +209,10 @@ def test_profile_global_prefill_falls_back_to_legacy_entities():
 def test_profile_device_prefill_uses_existing_einhornzentrale_entities_only():
     hass = _FakeHass(entity_ids=[
         "switch.living_pc_plug",
-        "sensor.benni_device_living_pc",
+        "sensor.benni_master_pc",
         "sensor.living_pc_plug_power_atomic",
         "switch.living_denon_plug_denon",
-        "sensor.benni_device_living_avr",
+        "sensor.benni_master_denon",
         "sensor.living_denon_plug_power_atomic",
         "switch.hall_h14_pro_plug",
         "sensor.hall_h14_pro_plug_power",
@@ -221,7 +221,7 @@ def test_profile_device_prefill_uses_existing_einhornzentrale_entities_only():
         "sensor.kitchen_dishwasher_plug_power_atomic",
         "switch.kitchen_diffuser_plug",
         "switch.wohnbereich_steckdose_tv",
-        "sensor.benni_device_living_tv",
+        "sensor.benni_master_tv",
         "sensor.living_tv_plug_power_atomic",
         "switch.living_subwoofer_plug",
         "switch.kitchen_diffuser_plug_child_lock",
@@ -238,11 +238,11 @@ def test_profile_device_prefill_uses_existing_einhornzentrale_entities_only():
         "switch.wohnbereich_steckdose_tv",
     }
     assert by_switch["switch.living_pc_plug"]["power_entity"] == (
-        "sensor.benni_device_living_pc"
+        "sensor.benni_master_pc"
     )
     assert by_switch["switch.living_pc_plug"]["kind"] == "pc"
     assert by_switch["switch.living_denon_plug_denon"]["power_entity"] == (
-        "sensor.benni_device_living_avr"
+        "sensor.benni_master_denon"
     )
     assert by_switch["switch.hall_h14_pro_plug"]["power_entity"] == (
         "sensor.hall_h14_pro_plug_power"
@@ -254,7 +254,7 @@ def test_profile_device_prefill_uses_existing_einhornzentrale_entities_only():
         "sensor.benni_device_kitchen_dishwasher"
     )
     assert by_switch["switch.wohnbereich_steckdose_tv"]["power_entity"] == (
-        "sensor.benni_device_living_tv"
+        "sensor.benni_master_tv"
     )
 
 

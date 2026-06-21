@@ -195,11 +195,11 @@ _PROFILE_GLOBALS: dict[str, dict[str, tuple[str, ...]]] = {
 _PROFILE_POWER_ENTITIES: dict[str, dict[str, tuple[str, ...]]] = {
     "benni": {
         "living_pc_plug": (
-            "sensor.benni_device_living_pc",
+            "sensor.benni_master_pc",
             "sensor.living_pc_plug_power",
         ),
         "living_denon_plug_denon": (
-            "sensor.benni_device_living_avr",
+            "sensor.benni_master_denon",
             "sensor.living_denon_plug_power_atomic",
         ),
         "hall_h14_pro_plug": (
@@ -222,15 +222,15 @@ _PROFILE_POWER_ENTITIES: dict[str, dict[str, tuple[str, ...]]] = {
             "sensor.kitchen_coffee_machine_plug_power",
         ),
         "living_ps5_plug": (
-            "sensor.benni_device_ps5",
+            "sensor.benni_master_ps5",
             "sensor.living_ps5_plug_power",
         ),
         "living_switch_plug": (
-            "sensor.benni_device_living_switch_plug",
+            "sensor.benni_master_switch",
             "sensor.living_switch_plug_power",
         ),
         "wohnbereich_steckdose_tv": (
-            "sensor.benni_device_living_tv",
+            "sensor.benni_master_tv",
             "sensor.living_tv_plug_power_atomic",
         ),
     },

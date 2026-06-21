@@ -72,7 +72,11 @@ from .storage import make_store
 _LOGGER = logging.getLogger(__name__)
 
 _PROFILE_POWER_BY_SWITCH = {
-    "switch.living_pc_plug": ("sensor.benni_device_living_pc",),
+    "switch.living_pc_plug": ("sensor.benni_master_pc",),
+    "switch.living_denon_plug_denon": ("sensor.benni_master_denon",),
+    "switch.living_ps5_plug": ("sensor.benni_master_ps5",),
+    "switch.living_switch_plug": ("sensor.benni_master_switch",),
+    "switch.wohnbereich_steckdose_tv": ("sensor.benni_master_tv",),
     "switch.kitchen_washing_machine_plug": ("sensor.benni_device_kitchen_washing_machine",),
     "switch.kitchen_dryer_plug": ("sensor.benni_device_kitchen_dryer",),
     "switch.kitchen_dishwasher_plug": ("sensor.benni_device_kitchen_dishwasher",),
@@ -241,6 +245,12 @@ class PlugPolicyCoordinator:
         s = self.hass.states.get(entity_id)
         if s is None:
             return None
+        for attr in ("is_active", "powered", "watt_active", "protection_relevant"):
+            value = s.attributes.get(attr)
+            if isinstance(value, bool):
+                return "active" if value else "idle"
+            if isinstance(value, str) and value.lower() in ("true", "false", "on", "off"):
+                return "active" if value.lower() in ("true", "on") else "idle"
         if _safe_float(s.state) is not None:
             return s.state
         for attr in ("watt", "power_w", "power"):

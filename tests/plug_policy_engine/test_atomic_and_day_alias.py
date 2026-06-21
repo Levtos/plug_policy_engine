@@ -49,11 +49,11 @@ def test_atomic_power_is_preferred_over_raw_power():
 
 def test_profile_power_prefers_core_device_over_atomic_power():
     hass = _FakeHass([
-        "sensor.benni_device_living_pc",
+        "sensor.benni_master_pc",
         "sensor.living_pc_plug_power_atomic",
     ])
     power = suggest_module.profile_power_entity(hass, "switch.living_pc_plug")
-    assert power == "sensor.benni_device_living_pc"
+    assert power == "sensor.benni_master_pc"
 
 
 def test_profile_power_uses_direct_state_lookup_when_entity_list_is_empty():
@@ -62,13 +62,13 @@ def test_profile_power_uses_direct_state_lookup_when_entity_list_is_empty():
             return []
 
         def get(self, entity_id):
-            if entity_id == "sensor.benni_device_living_pc":
+            if entity_id == "sensor.benni_master_pc":
                 return object()
             return None
 
     hass = types.SimpleNamespace(states=_States())
     power = suggest_module.profile_power_entity(hass, "switch.living_pc_plug")
-    assert power == "sensor.benni_device_living_pc"
+    assert power == "sensor.benni_master_pc"
 
 
 def test_raw_power_is_used_when_atomic_absent():
