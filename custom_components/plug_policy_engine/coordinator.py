@@ -245,12 +245,6 @@ class PlugPolicyCoordinator:
         s = self.hass.states.get(entity_id)
         if s is None:
             return None
-        for attr in ("is_active", "powered", "watt_active", "protection_relevant"):
-            value = s.attributes.get(attr)
-            if isinstance(value, bool):
-                return "active" if value else "idle"
-            if isinstance(value, str) and value.lower() in ("true", "false", "on", "off"):
-                return "active" if value.lower() in ("true", "on") else "idle"
         if _safe_float(s.state) is not None:
             return s.state
         for attr in ("watt", "power_w", "power"):
@@ -258,6 +252,20 @@ class PlugPolicyCoordinator:
             if _safe_float(value) is not None:
                 return value
         return s.state
+
+    def _read_active_hint(self, entity_id: str | None) -> Any:
+        if not entity_id:
+            return None
+        s = self.hass.states.get(entity_id)
+        if s is None:
+            return None
+        for attr in ("is_active", "powered", "watt_active", "protection_relevant"):
+            value = s.attributes.get(attr)
+            if isinstance(value, bool):
+                return "active" if value else "idle"
+            if isinstance(value, str) and value.lower() in ("true", "false", "on", "off"):
+                return "active" if value.lower() in ("true", "on") else "idle"
+        return None
 
     def _read_bool(self, entity_id: str | None) -> bool | None:
         s = self._read_str(entity_id)
@@ -290,7 +298,9 @@ class PlugPolicyCoordinator:
         st = self.states[cfg.device_id]
         st.switch_state = self._read_str(cfg.switch_entity)
         self._clear_pending_action_if_reached(cfg.device_id, st.switch_state)
-        st.power_w = self._read_power(self._resolve_power_entity(cfg))
+        power_entity = self._resolve_power_entity(cfg)
+        st.power_w = self._read_power(power_entity)
+        st.active_hint = self._read_active_hint(power_entity)
         st.battery_pct = self._read_str(cfg.battery_entity) if cfg.battery_entity else None
         return st
 

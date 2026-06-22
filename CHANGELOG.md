@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.19
+
+- Keep Core-Devices master watt values and semantic active/idle hints separate.
+  Plug Policy now displays the numeric `watt`/`power_w` value while using
+  attributes like `is_active` only for activity classification, avoiding
+  `active_state=active` with `power_w=null` in the UI.
+
 ## 0.1.18
 
 - Rebind profile power-source candidates for PC, Denon, PS5, Switch, and TV

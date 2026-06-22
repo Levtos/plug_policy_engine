@@ -135,7 +135,7 @@ def test_read_power_uses_watt_attribute_for_core_device_sensor():
     assert coord._read_power("sensor.benni_master_pc") == 170.0
 
 
-def test_read_power_uses_master_active_attribute_before_zero_watt():
+def test_master_active_attribute_is_separate_from_numeric_watt():
     mod = _load_coordinator_module()
     coord = mod.PlugPolicyCoordinator.__new__(mod.PlugPolicyCoordinator)
     coord.hass = _FakeHass({
@@ -145,10 +145,11 @@ def test_read_power_uses_master_active_attribute_before_zero_watt():
         ),
     })
 
-    assert coord._read_power("sensor.benni_master_switch") == "active"
+    assert coord._read_power("sensor.benni_master_switch") == 0.0
+    assert coord._read_active_hint("sensor.benni_master_switch") == "active"
 
 
-def test_read_power_uses_master_inactive_attribute_before_nonzero_watt():
+def test_master_inactive_attribute_is_separate_from_numeric_watt():
     mod = _load_coordinator_module()
     coord = mod.PlugPolicyCoordinator.__new__(mod.PlugPolicyCoordinator)
     coord.hass = _FakeHass({
@@ -158,7 +159,8 @@ def test_read_power_uses_master_inactive_attribute_before_nonzero_watt():
         ),
     })
 
-    assert coord._read_power("sensor.benni_master_tv") == "idle"
+    assert coord._read_power("sensor.benni_master_tv") == 39.0
+    assert coord._read_active_hint("sensor.benni_master_tv") == "idle"
 
 
 def test_engine_classifies_semantic_master_power_values():
@@ -176,6 +178,26 @@ def test_engine_classifies_semantic_master_power_values():
 
     assert active.active_state == "active"
     assert idle.active_state == "idle"
+
+
+def test_engine_prefers_active_hint_over_numeric_power():
+    cfg = engine.DeviceConfig(
+        device_id="tv",
+        name="TV",
+        switch_entity="switch.tv",
+        power_entity="sensor.benni_master_tv",
+        active_threshold=8.0,
+        idle_threshold=5.0,
+    )
+
+    decision = engine.evaluate(
+        cfg,
+        engine.DeviceState(switch_state="on", power_w=39.0, active_hint="idle"),
+        engine.GlobalContext(),
+    )
+
+    assert decision.active_state == "idle"
+    assert decision.power_w == 39.0
 
 
 def test_coordinator_backfills_missing_profile_power_entity_at_runtime():
@@ -200,6 +222,36 @@ def test_coordinator_backfills_missing_profile_power_entity_at_runtime():
 
     assert coord.configs["living_pc_plug"].power_entity == "sensor.benni_master_pc"
     assert coord._refresh_device_state(coord.configs["living_pc_plug"]).power_w == 170.0
+
+
+def test_coordinator_reads_master_active_hint_and_keeps_watt_for_display():
+    mod = _load_coordinator_module()
+    hass = _FakeHass({
+        "switch.living_pc_plug": _FakeState("on"),
+        "sensor.benni_master_pc": _FakeState("active", {"is_active": True, "watt": 205.0}),
+    })
+    entry = _FakeEntry({
+        "devices": [
+            {
+                "device_id": "living_pc_plug",
+                "name": "PC",
+                "switch_entity": "switch.living_pc_plug",
+                "power_entity": "sensor.benni_master_pc",
+                "policy": "HB",
+                "kind": "pc",
+            }
+        ]
+    })
+
+    coord = mod.PlugPolicyCoordinator(hass, entry)
+    cfg = coord.configs["living_pc_plug"]
+    state = coord._refresh_device_state(cfg)
+    decision = engine.evaluate(cfg, state, engine.GlobalContext())
+
+    assert state.power_w == 205.0
+    assert state.active_hint == "active"
+    assert decision.active_state == "active"
+    assert decision.power_w == 205.0
 
 
 def test_coordinator_resolves_profile_power_after_core_device_appears():

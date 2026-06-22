@@ -90,6 +90,7 @@ class DeviceConfig:
 class DeviceState:
     switch_state: Optional[str] = None         # "on"/"off"/None
     power_w: Any = None                        # float | "unknown"/"unavailable"/None
+    active_hint: Any = None                    # active / idle hint from semantic source attrs
     battery_pct: Any = None
     last_idle_since_ts: Optional[float] = None # when did we first see idle continuously
     manual_on_until_ts: Optional[float] = None # PC cooldown
@@ -157,6 +158,14 @@ def _battery_int(b: Any) -> Optional[int]:
 
 def _classify_active(cfg: DeviceConfig, state: DeviceState) -> str:
     """Return 'active' / 'idle' / 'unknown'."""
+    if isinstance(state.active_hint, bool):
+        return "active" if state.active_hint else "idle"
+    if isinstance(state.active_hint, str):
+        semantic = state.active_hint.strip().lower()
+        if semantic in _ACTIVE_STRINGS:
+            return "active"
+        if semantic in _IDLE_STRINGS:
+            return "idle"
     if isinstance(state.power_w, str):
         semantic = state.power_w.strip().lower()
         if semantic in _ACTIVE_STRINGS:
