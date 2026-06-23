@@ -100,9 +100,16 @@ def _load_coordinator_module():
             "sensor.benni_master_pc"
         ):
             return "sensor.benni_master_pc"
+        if switch_entity == "switch.kitchen_washing_machine_plug" and hass.states.get(
+            "sensor.benni_master_plug_power"
+        ):
+            return "sensor.benni_master_plug_power"
         return None
 
     suggest_stub.profile_power_entity = _profile_power_entity
+    suggest_stub.base_slug = lambda entity_id: (
+        str(entity_id).split(".", 1)[1] if entity_id and "." in str(entity_id) else entity_id
+    )
     sys.modules["pp_suggest_stub"] = suggest_stub
 
     src = (MODULE_DIR / "coordinator.py").read_text(encoding="utf-8")
@@ -252,6 +259,45 @@ def test_coordinator_reads_master_active_hint_and_keeps_watt_for_display():
     assert state.active_hint == "active"
     assert decision.active_state == "active"
     assert decision.power_w == 205.0
+
+
+def test_coordinator_reads_plug_power_facade_device_attributes():
+    mod = _load_coordinator_module()
+    hass = _FakeHass({
+        "switch.kitchen_washing_machine_plug": _FakeState("on"),
+        "sensor.benni_master_plug_power": _FakeState(
+            "protected",
+            {
+                "kitchen_washing_machine_plug_active": True,
+                "kitchen_washing_machine_plug_watt": 42.0,
+                "kitchen_dryer_plug_active": False,
+                "kitchen_dryer_plug_watt": 0.0,
+                "is_active": False,
+            },
+        ),
+    })
+    entry = _FakeEntry({
+        "devices": [
+            {
+                "device_id": "kitchen_washing_machine_plug",
+                "name": "Waschmaschine",
+                "switch_entity": "switch.kitchen_washing_machine_plug",
+                "policy": "AC",
+                "kind": "appliance",
+            }
+        ]
+    })
+
+    coord = mod.PlugPolicyCoordinator(hass, entry)
+    cfg = coord.configs["kitchen_washing_machine_plug"]
+    state = coord._refresh_device_state(cfg)
+    decision = engine.evaluate(cfg, state, engine.GlobalContext())
+
+    assert cfg.power_entity == "sensor.benni_master_plug_power"
+    assert state.power_w == 42.0
+    assert state.active_hint == "active"
+    assert decision.active_state == "active"
+    assert decision.power_w == 42.0
 
 
 def test_coordinator_resolves_profile_power_after_core_device_appears():

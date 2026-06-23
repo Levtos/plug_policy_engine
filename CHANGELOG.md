@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.20
+
+- Prefer the new Core-Devices `sensor.benni_master_plug_power` facade for H14,
+  appliance, and diffuser profile power bindings when it exists.
+- Read per-device facade attributes such as `<device_id>_active` and
+  `<device_id>_watt` before falling back to aggregate master attributes or raw
+  watt thresholds.
+
 ## 0.1.19
 
 - Keep Core-Devices master watt values and semantic active/idle hints separate.

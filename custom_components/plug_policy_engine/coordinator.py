@@ -77,9 +77,13 @@ _PROFILE_POWER_BY_SWITCH = {
     "switch.living_ps5_plug": ("sensor.benni_master_ps5",),
     "switch.living_switch_plug": ("sensor.benni_master_switch",),
     "switch.wohnbereich_steckdose_tv": ("sensor.benni_master_tv",),
-    "switch.kitchen_washing_machine_plug": ("sensor.benni_device_kitchen_washing_machine",),
-    "switch.kitchen_dryer_plug": ("sensor.benni_device_kitchen_dryer",),
-    "switch.kitchen_dishwasher_plug": ("sensor.benni_device_kitchen_dishwasher",),
+    "switch.hall_h14_pro_plug": ("sensor.benni_master_plug_power",),
+    "switch.kitchen_washing_machine_plug": ("sensor.benni_master_plug_power",),
+    "switch.kitchen_dryer_plug": ("sensor.benni_master_plug_power",),
+    "switch.kitchen_dishwasher_plug": ("sensor.benni_master_plug_power",),
+    "switch.kitchen_coffee_machine_plug": ("sensor.benni_master_plug_power",),
+    "switch.bath_diffuser_plug": ("sensor.benni_master_plug_power",),
+    "switch.kitchen_diffuser_plug": ("sensor.benni_master_plug_power",),
 }
 
 _ACTION_RETRY_SECONDS = 10.0
@@ -239,12 +243,29 @@ class PlugPolicyCoordinator:
         s = self.hass.states.get(entity_id)
         return s.state if s else None
 
-    def _read_power(self, entity_id: str | None) -> Any:
+    def _facade_attr_names(self, cfg: DeviceConfig | None, suffix: str) -> tuple[str, ...]:
+        if cfg is None:
+            return ()
+        names: list[str] = []
+        for base in (cfg.device_id, _suggest.base_slug(cfg.switch_entity)):
+            if base and f"{base}_{suffix}" not in names:
+                names.append(f"{base}_{suffix}")
+        return tuple(names)
+
+    def _read_power(self, entity_id: str | None, cfg: DeviceConfig | None = None) -> Any:
         if not entity_id:
             return None
         s = self.hass.states.get(entity_id)
         if s is None:
             return None
+        for attr in self._facade_attr_names(cfg, "watt"):
+            value = s.attributes.get(attr)
+            if _safe_float(value) is not None:
+                return value
+        for attr in self._facade_attr_names(cfg, "power_w"):
+            value = s.attributes.get(attr)
+            if _safe_float(value) is not None:
+                return value
         if _safe_float(s.state) is not None:
             return s.state
         for attr in ("watt", "power_w", "power"):
@@ -253,12 +274,18 @@ class PlugPolicyCoordinator:
                 return value
         return s.state
 
-    def _read_active_hint(self, entity_id: str | None) -> Any:
+    def _read_active_hint(self, entity_id: str | None, cfg: DeviceConfig | None = None) -> Any:
         if not entity_id:
             return None
         s = self.hass.states.get(entity_id)
         if s is None:
             return None
+        for attr in self._facade_attr_names(cfg, "active"):
+            value = s.attributes.get(attr)
+            if isinstance(value, bool):
+                return "active" if value else "idle"
+            if isinstance(value, str) and value.lower() in ("true", "false", "on", "off"):
+                return "active" if value.lower() in ("true", "on") else "idle"
         for attr in ("is_active", "powered", "watt_active", "protection_relevant"):
             value = s.attributes.get(attr)
             if isinstance(value, bool):
@@ -299,8 +326,8 @@ class PlugPolicyCoordinator:
         st.switch_state = self._read_str(cfg.switch_entity)
         self._clear_pending_action_if_reached(cfg.device_id, st.switch_state)
         power_entity = self._resolve_power_entity(cfg)
-        st.power_w = self._read_power(power_entity)
-        st.active_hint = self._read_active_hint(power_entity)
+        st.power_w = self._read_power(power_entity, cfg)
+        st.active_hint = self._read_active_hint(power_entity, cfg)
         st.battery_pct = self._read_str(cfg.battery_entity) if cfg.battery_entity else None
         return st
 
