@@ -101,9 +101,9 @@ def _load_coordinator_module():
         ):
             return "sensor.benni_master_pc"
         if switch_entity == "switch.kitchen_washing_machine_plug" and hass.states.get(
-            "sensor.benni_master_plug_power"
+            "sensor.benni_master_household_plug"
         ):
-            return "sensor.benni_master_plug_power"
+            return "sensor.benni_master_household_plug"
         return None
 
     suggest_stub.profile_power_entity = _profile_power_entity
@@ -261,12 +261,12 @@ def test_coordinator_reads_master_active_hint_and_keeps_watt_for_display():
     assert decision.power_w == 205.0
 
 
-def test_coordinator_reads_plug_power_facade_device_attributes():
+def test_coordinator_reads_household_master_device_attributes():
     mod = _load_coordinator_module()
     hass = _FakeHass({
         "switch.kitchen_washing_machine_plug": _FakeState("on"),
-        "sensor.benni_master_plug_power": _FakeState(
-            "protected",
+        "sensor.benni_master_household_plug": _FakeState(
+            "active",
             {
                 "kitchen_washing_machine_plug_active": True,
                 "kitchen_washing_machine_plug_watt": 42.0,
@@ -293,7 +293,7 @@ def test_coordinator_reads_plug_power_facade_device_attributes():
     state = coord._refresh_device_state(cfg)
     decision = engine.evaluate(cfg, state, engine.GlobalContext())
 
-    assert cfg.power_entity == "sensor.benni_master_plug_power"
+    assert cfg.power_entity == "sensor.benni_master_household_plug"
     assert state.power_w == 42.0
     assert state.active_hint == "active"
     assert decision.active_state == "active"

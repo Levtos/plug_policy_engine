@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.21
+
+- Replace the rejected Plug/Power facade binding with the intended
+  `sensor.benni_master_household_plug` source for washing machine, dryer,
+  dishwasher, and kitchen diffuser plugs only.
+- Keep non-household plug profiles such as H14, coffee machine, and bath
+  diffuser on their existing direct sources.
+
 ## 0.1.20
 
 - Prefer the new Core-Devices `sensor.benni_master_plug_power` facade for H14,

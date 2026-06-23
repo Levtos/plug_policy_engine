@@ -77,13 +77,10 @@ _PROFILE_POWER_BY_SWITCH = {
     "switch.living_ps5_plug": ("sensor.benni_master_ps5",),
     "switch.living_switch_plug": ("sensor.benni_master_switch",),
     "switch.wohnbereich_steckdose_tv": ("sensor.benni_master_tv",),
-    "switch.hall_h14_pro_plug": ("sensor.benni_master_plug_power",),
-    "switch.kitchen_washing_machine_plug": ("sensor.benni_master_plug_power",),
-    "switch.kitchen_dryer_plug": ("sensor.benni_master_plug_power",),
-    "switch.kitchen_dishwasher_plug": ("sensor.benni_master_plug_power",),
-    "switch.kitchen_coffee_machine_plug": ("sensor.benni_master_plug_power",),
-    "switch.bath_diffuser_plug": ("sensor.benni_master_plug_power",),
-    "switch.kitchen_diffuser_plug": ("sensor.benni_master_plug_power",),
+    "switch.kitchen_washing_machine_plug": ("sensor.benni_master_household_plug",),
+    "switch.kitchen_dryer_plug": ("sensor.benni_master_household_plug",),
+    "switch.kitchen_dishwasher_plug": ("sensor.benni_master_household_plug",),
+    "switch.kitchen_diffuser_plug": ("sensor.benni_master_household_plug",),
 }
 
 _ACTION_RETRY_SECONDS = 10.0

@@ -258,27 +258,33 @@ def test_profile_device_prefill_uses_existing_einhornzentrale_entities_only():
     )
 
 
-def test_profile_device_prefill_prefers_plug_power_facade_for_appliances():
+def test_profile_device_prefill_prefers_household_master_for_household_plugs():
     hass = _FakeHass(entity_ids=[
         "switch.hall_h14_pro_plug",
-        "sensor.benni_master_plug_power",
+        "sensor.benni_master_household_plug",
         "sensor.hall_h14_pro_plug_power",
         "switch.kitchen_dishwasher_plug",
         "sensor.benni_device_kitchen_dishwasher",
         "sensor.kitchen_dishwasher_plug_power",
+        "switch.kitchen_coffee_machine_plug",
+        "sensor.benni_device_kitchen_coffee",
+        "sensor.kitchen_coffee_machine_plug_power",
         "switch.kitchen_diffuser_plug",
     ])
     devices = suggest_module.profile_device_prefill(hass)
     by_switch = {d["switch_entity"]: d for d in devices}
 
     assert by_switch["switch.hall_h14_pro_plug"]["power_entity"] == (
-        "sensor.benni_master_plug_power"
+        "sensor.hall_h14_pro_plug_power"
     )
     assert by_switch["switch.kitchen_dishwasher_plug"]["power_entity"] == (
-        "sensor.benni_master_plug_power"
+        "sensor.benni_master_household_plug"
+    )
+    assert by_switch["switch.kitchen_coffee_machine_plug"]["power_entity"] == (
+        "sensor.benni_device_kitchen_coffee"
     )
     assert by_switch["switch.kitchen_diffuser_plug"]["power_entity"] == (
-        "sensor.benni_master_plug_power"
+        "sensor.benni_master_household_plug"
     )
 
 

@@ -203,34 +203,29 @@ _PROFILE_POWER_ENTITIES: dict[str, dict[str, tuple[str, ...]]] = {
             "sensor.living_denon_plug_power_atomic",
         ),
         "hall_h14_pro_plug": (
-            "sensor.benni_master_plug_power",
             "sensor.hall_h14_pro_plug_power",
         ),
         "kitchen_washing_machine_plug": (
-            "sensor.benni_master_plug_power",
+            "sensor.benni_master_household_plug",
             "sensor.benni_device_kitchen_washing_machine",
             "sensor.kitchen_washing_machine_plug_power",
         ),
         "kitchen_dryer_plug": (
-            "sensor.benni_master_plug_power",
+            "sensor.benni_master_household_plug",
             "sensor.benni_device_kitchen_dryer",
             "sensor.kitchen_dryer_plug_power",
         ),
         "kitchen_dishwasher_plug": (
-            "sensor.benni_master_plug_power",
+            "sensor.benni_master_household_plug",
             "sensor.benni_device_kitchen_dishwasher",
             "sensor.kitchen_dishwasher_plug_power",
         ),
         "kitchen_coffee_machine_plug": (
-            "sensor.benni_master_plug_power",
             "sensor.benni_device_kitchen_coffee",
             "sensor.kitchen_coffee_machine_plug_power",
         ),
-        "bath_diffuser_plug": (
-            "sensor.benni_master_plug_power",
-        ),
         "kitchen_diffuser_plug": (
-            "sensor.benni_master_plug_power",
+            "sensor.benni_master_household_plug",
         ),
         "living_ps5_plug": (
             "sensor.benni_master_ps5",
