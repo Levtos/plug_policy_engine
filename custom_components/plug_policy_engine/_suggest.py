@@ -305,7 +305,7 @@ _COMMON_POWER_FIELDS = (
     "never_cut_when_active",
     "manual_on_cooldown_seconds",
 )
-_TABLET_FIELDS = ("tablet_low", "tablet_high", "manual_on_cooldown_seconds")
+_TABLET_FIELDS = ("tablet_low", "tablet_high", "display_entity", "manual_on_cooldown_seconds")
 _DIFFUSER_FIELDS = (
     "diffuser_on_minutes", "diffuser_off_minutes", "manual_on_cooldown_seconds",
 )

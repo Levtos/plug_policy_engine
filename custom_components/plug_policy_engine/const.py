@@ -82,6 +82,7 @@ CONF_NAME = "name"
 CONF_SWITCH = "switch_entity"
 CONF_POWER = "power_entity"
 CONF_BATTERY = "battery_entity"
+CONF_DISPLAY_ENTITY = "display_entity"   # Tablet: Screen-on/off-Aktor (switch/light/input_boolean)
 CONF_POLICY = "policy"
 CONF_KIND = "kind"
 CONF_ACTIVE_THRESHOLD = "active_threshold"

@@ -30,6 +30,7 @@ from .const import (
     CONF_DEADBAND_HIGH,
     CONF_DEADBAND_LOW,
     CONF_DEVICES,
+    CONF_DISPLAY_ENTITY,
     CONF_DIFFUSER_OFF_MIN,
     CONF_DIFFUSER_ON_MIN,
     CONF_ENABLE_CONTROL,
@@ -126,6 +127,7 @@ class PlugPolicyCoordinator:
                 power_entity=d.get(CONF_POWER)
                 or _suggest.profile_power_entity(hass, d.get(CONF_SWITCH)),
                 battery_entity=d.get(CONF_BATTERY),
+                display_entity=d.get(CONF_DISPLAY_ENTITY),
                 policy=d.get(CONF_POLICY, "HB"),
                 kind=d.get(CONF_KIND, "generic"),
                 active_threshold=float(d.get(CONF_ACTIVE_THRESHOLD, 5.0)),
@@ -199,6 +201,8 @@ class PlugPolicyCoordinator:
                 watch.add(cfg.power_entity)
             if cfg.battery_entity:
                 watch.add(cfg.battery_entity)
+            if cfg.display_entity:
+                watch.add(cfg.display_entity)
 
         if watch:
             self._unsub.append(
@@ -326,6 +330,7 @@ class PlugPolicyCoordinator:
         st.power_w = self._read_power(power_entity, cfg)
         st.active_hint = self._read_active_hint(power_entity, cfg)
         st.battery_pct = self._read_str(cfg.battery_entity) if cfg.battery_entity else None
+        st.display_state = self._read_str(cfg.display_entity) if cfg.display_entity else None
         return st
 
     # ---------- evaluation + actions ----------
@@ -372,6 +377,7 @@ class PlugPolicyCoordinator:
 
         if self.enable_control:
             await self._apply_decision(cfg, st, decision)
+            await self._apply_display(cfg, st, decision)
 
     def _resume_auto_suspended_if_stable(
         self,
@@ -484,6 +490,34 @@ class PlugPolicyCoordinator:
                 "plug_policy_engine: switch call failed for %s: %s", cfg.switch_entity, err,
             )
 
+    async def _apply_display(self, cfg: DeviceConfig, st: DeviceState, dec: Decision) -> None:
+        """Tablet-Screen schalten (additiv, gated). Domain-agnostisch via
+        ``homeassistant.turn_on/off`` (display_entity kann switch/light/input_boolean
+        sein). Idempotent: nur schalten, wenn der Ist-Zustand abweicht."""
+        if not cfg.display_entity:
+            return
+        if dec.desired_display_state not in (DESIRED_ON, DESIRED_OFF):
+            return
+        target_state = "on" if dec.desired_display_state == DESIRED_ON else "off"
+        current = (st.display_state or "").lower()
+        if current == target_state:
+            return
+        service = "turn_on" if dec.desired_display_state == DESIRED_ON else "turn_off"
+        try:
+            await self.hass.services.async_call(
+                "homeassistant", service, {}, blocking=False,
+                target={"entity_id": cfg.display_entity},
+            )
+            _LOGGER.info(
+                "plug_policy_engine: display %s on %s — %s",
+                service, cfg.display_entity, dec.reason,
+            )
+        except Exception as err:  # noqa: BLE001
+            _LOGGER.error(
+                "plug_policy_engine: display call failed for %s: %s",
+                cfg.display_entity, err,
+            )
+
     def _clear_pending_action_if_reached(self, device_id: str, switch_state: str | None) -> None:
         pending = self._pending_actions.get(device_id)
         if not pending or switch_state is None:
@@ -558,12 +592,16 @@ class PlugPolicyCoordinator:
     def _kind_widget(self, cfg: DeviceConfig, st: DeviceState) -> dict[str, Any]:
         if cfg.kind == "tablet":
             batt = _safe_float(st.battery_pct)
+            dec = self.decisions.get(cfg.device_id)
             return {
                 "type": "tablet",
                 "battery_pct": batt,
                 "low": cfg.tablet_low,
                 "high": cfg.tablet_high,
                 "guard": batt is not None and batt < 20,
+                "display_entity": cfg.display_entity,
+                "display_state": st.display_state,
+                "desired_display_state": dec.desired_display_state if dec else DESIRED_KEEP,
             }
         if cfg.kind == "diffuser":
             duration = (
@@ -601,6 +639,9 @@ class PlugPolicyCoordinator:
             "active_state": dec.active_state if dec else "unknown",
             "battery_pct": _safe_float(st.battery_pct),
             "desired_switch_state": dec.desired_switch_state if dec else DESIRED_KEEP,
+            "desired_display_state": dec.desired_display_state if dec else DESIRED_KEEP,
+            "display_entity": cfg.display_entity,
+            "display_state": st.display_state,
             "reason": dec.reason if dec else "not evaluated yet",
             "blockers": list(dec.blockers) if dec else [],
             "thresholds": {

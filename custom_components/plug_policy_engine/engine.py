@@ -70,6 +70,7 @@ class DeviceConfig:
     kind: str = KIND_GENERIC
     power_entity: Optional[str] = None
     battery_entity: Optional[str] = None
+    display_entity: Optional[str] = None   # Tablet: Screen-Aktor (None = Display-Steuerung aus)
     active_threshold: float = DEFAULT_ACTIVE_THRESHOLD
     idle_threshold: float = DEFAULT_IDLE_THRESHOLD
     deadband_lower: Optional[float] = None
@@ -92,6 +93,7 @@ class DeviceState:
     power_w: Any = None                        # float | "unknown"/"unavailable"/None
     active_hint: Any = None                    # active / idle hint from semantic source attrs
     battery_pct: Any = None
+    display_state: Optional[str] = None        # "on"/"off"/None — aktueller Screen-Zustand
     last_idle_since_ts: Optional[float] = None # when did we first see idle continuously
     manual_on_until_ts: Optional[float] = None # PC cooldown
     diffuser_phase: str = "off"                # "on" | "off"
@@ -108,8 +110,9 @@ class Decision:
     policy: str
     kind: str
     desired_switch_state: str    # on / off / keep
-    active_state: str            # active / idle / unknown
-    reason: str
+    desired_display_state: str = DESIRED_KEEP  # Tablet-Screen: on / off / keep (sonst keep)
+    active_state: str = "unknown"  # active / idle / unknown
+    reason: str = ""
     blockers: list = field(default_factory=list)
     power_w: Any = None
     context: dict = field(default_factory=dict)
@@ -497,6 +500,38 @@ def _decide_diffuser(cfg, state, ctx, make) -> Decision:
 
 
 def _decide_tablet(cfg, state, ctx, make) -> Decision:
+    """Tablet-Kind: kombiniert Lade-Policy (Plug) + Display-Policy (Screen).
+
+    Die Plug-/Lade-Entscheidung (``desired_switch_state``) ist unverändert; die
+    neue Display-Entscheidung (``desired_display_state``) hängt additiv daran und
+    greift nur, wenn ein ``display_entity`` konfiguriert ist.
+    """
+    dec = _decide_tablet_charge(cfg, state, ctx, make)
+    display = _decide_tablet_display(cfg, ctx)
+    if display != DESIRED_KEEP:
+        return dc_replace(dec, desired_display_state=display)
+    return dec
+
+
+def _decide_tablet_display(cfg, ctx) -> str:
+    """Pure Screen-Entscheidung (ersetzt die alten tablet_display_*-Automationen).
+
+    - kein display_entity → Feature aus (keep).
+    - Schlaf ODER wirklich abwesend → Screen aus / Sleep-Lock (hard lock).
+    - zuhause-artig UND wach → Screen an.
+    - sonst (z.B. wach aber Präsenz unbekannt) → keep.
+    bei_eltern zählt als zuhause-artig (kein Lock), analog zur Lade-Policy.
+    """
+    if not cfg.display_entity:
+        return DESIRED_KEEP
+    if ctx.asleep or ctx.is_truly_away:
+        return DESIRED_OFF
+    if ctx.is_home_like and ctx.bio == BIO_AWAKE:
+        return DESIRED_ON
+    return DESIRED_KEEP
+
+
+def _decide_tablet_charge(cfg, state, ctx, make) -> Decision:
     """Tablet 40/80 charging. Runs 24/7, independent of presence/bio.
 
     Below ~20% deep-discharge protection has absolute priority.
