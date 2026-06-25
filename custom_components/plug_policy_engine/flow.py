@@ -37,6 +37,7 @@ from .const import (
     CONF_ACTIVITY,
     CONF_ALLOWED_CONTEXTS,
     CONF_BATTERY,
+    CONF_DISPLAY_ENTITY,
     CONF_BIO,
     CONF_MODULE_ID,
     CONF_DAY,
@@ -219,6 +220,14 @@ def _advanced_fragments(d: dict) -> dict[str, tuple]:
         "tablet_high": (
             vol.Optional(CONF_TABLET_HIGH, default=d.get(CONF_TABLET_HIGH, DEFAULT_TABLET_HIGH)),
             vol.All(int, vol.Range(min=0, max=100)),
+        ),
+        "display_entity": (
+            vol.Optional(CONF_DISPLAY_ENTITY, default=d[CONF_DISPLAY_ENTITY])
+            if d.get(CONF_DISPLAY_ENTITY)
+            else vol.Optional(CONF_DISPLAY_ENTITY),
+            selector.EntitySelector(
+                selector.EntitySelectorConfig(domain=["switch", "light", "input_boolean"])
+            ),
         ),
         "diffuser_on_minutes": (
             vol.Optional(CONF_DIFFUSER_ON_MIN, default=d.get(CONF_DIFFUSER_ON_MIN, DEFAULT_DIFFUSER_ON)),

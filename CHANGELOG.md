@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.2.0
+
+- **Tablet-Display-Policy (FLEET-156).** Das `tablet`-Kind bekommt zusätzlich zur
+  40/80-Lade-Policy eine Screen-Steuerung: neuer optionaler `display_entity`
+  (switch/light/input_boolean). Regeln (ersetzen die alten `tablet_display_*`-
+  Automationen): Schlaf ODER wirklich abwesend → Screen aus (Sleep-Lock);
+  zuhause-artig UND wach → Screen an; sonst keep. `bei_eltern` zählt als zuhause.
+- Additiv & rückwärtskompatibel: neue `Decision.desired_display_state`
+  (Default `keep`), greift nur bei gesetztem `display_entity`. Plug-/Lade-Logik
+  und alle anderen Kinds unverändert. Apply gated über `enable_control`
+  (Shadow), idempotent, domain-agnostisch via `homeassistant.turn_on/off`.
+- Status/Panel: `desired_display_state`, `display_state`, `display_entity` im
+  `device_status` + tablet-Widget.
+
 ## 0.1.21
 
 - Replace the rejected Plug/Power facade binding with the intended
