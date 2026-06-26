@@ -590,7 +590,7 @@ class PlugPolicyCoordinator:
             self._listeners.remove(cb)
 
     def _kind_widget(self, cfg: DeviceConfig, st: DeviceState) -> dict[str, Any]:
-        if cfg.kind == "tablet":
+        if cfg.kind in ("tablet", "blind"):
             batt = _safe_float(st.battery_pct)
             dec = self.decisions.get(cfg.device_id)
             return {

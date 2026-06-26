@@ -14,7 +14,7 @@ from typing import Any, Optional
 from .const import (
     POLICY_AO, POLICY_HB, POLICY_AC, POLICY_SC, POLICY_CS, POLICY_SPECIAL,
     KIND_PC, KIND_APPLIANCE, KIND_COFFEE, KIND_BIAS_LIGHT, KIND_DIFFUSER,
-    KIND_TABLET, KIND_DENON, KIND_H14_DOCK, KIND_GENERIC,
+    KIND_TABLET, KIND_BLIND, KIND_DENON, KIND_H14_DOCK, KIND_GENERIC,
     PRESENCE_HOME, PRESENCE_AWAY, PRESENCE_AT_PARENTS,
     BIO_AWAKE, BIO_SLEEP,
     DAY_NIGHT, DAY_PHASE_ALIASES,
@@ -287,6 +287,11 @@ def evaluate(
     # Device-kind specialisations (these may short-circuit policy)
     if cfg.kind == KIND_TABLET:
         return stable_off_gate(_decide_tablet(cfg, state, ctx, make))
+    if cfg.kind == KIND_BLIND:
+        # Blind charger: battery-keeper only, no display/screen control.
+        # Reuses the tablet charge logic (tablet_low/high + <20% guard +
+        # unavailable→safe-on) against the cover's battery sensor.
+        return stable_off_gate(_decide_tablet_charge(cfg, state, ctx, make))
     if cfg.kind == KIND_DIFFUSER:
         return stable_off_gate(_decide_diffuser(cfg, state, ctx, make))
     if cfg.kind == KIND_BIAS_LIGHT:
@@ -536,25 +541,27 @@ def _decide_tablet_charge(cfg, state, ctx, make) -> Decision:
 
     Below ~20% deep-discharge protection has absolute priority.
     """
+    # Shared by the tablet and blind-charger kinds; label the reason per kind.
+    label = "blind" if cfg.kind == KIND_BLIND else "tablet"
     batt = _battery_int(state.battery_pct)
     if batt is None:
         # unavailable → keep charging on
         if state.switch_state == "on":
-            return make(DESIRED_KEEP, "tablet: battery unknown → keep charging on")
-        return make(DESIRED_ON, "tablet: battery unknown → safe on")
+            return make(DESIRED_KEEP, f"{label}: battery unknown → keep charging on")
+        return make(DESIRED_ON, f"{label}: battery unknown → safe on")
 
     if batt < 20:
         if state.switch_state == "on":
-            return make(DESIRED_KEEP, "tablet: deep-discharge guard (<20%) on", ["deep_discharge_guard"])
-        return make(DESIRED_ON, "tablet: deep-discharge guard (<20%)", ["deep_discharge_guard"])
+            return make(DESIRED_KEEP, f"{label}: deep-discharge guard (<20%) on", ["deep_discharge_guard"])
+        return make(DESIRED_ON, f"{label}: deep-discharge guard (<20%)", ["deep_discharge_guard"])
 
     if batt < cfg.tablet_low:
         if state.switch_state == "on":
-            return make(DESIRED_KEEP, f"tablet: {batt}% < {cfg.tablet_low}, charging")
-        return make(DESIRED_ON, f"tablet: {batt}% < {cfg.tablet_low} → charge")
+            return make(DESIRED_KEEP, f"{label}: {batt}% < {cfg.tablet_low}, charging")
+        return make(DESIRED_ON, f"{label}: {batt}% < {cfg.tablet_low} → charge")
     if batt >= cfg.tablet_high:
         if state.switch_state == "off":
-            return make(DESIRED_KEEP, f"tablet: {batt}% ≥ {cfg.tablet_high}, off")
-        return make(DESIRED_OFF, f"tablet: {batt}% ≥ {cfg.tablet_high} → stop charge")
+            return make(DESIRED_KEEP, f"{label}: {batt}% ≥ {cfg.tablet_high}, off")
+        return make(DESIRED_OFF, f"{label}: {batt}% ≥ {cfg.tablet_high} → stop charge")
     # Hysteresis zone: hold whatever the switch is doing
-    return make(DESIRED_KEEP, f"tablet: {batt}% inside hysteresis ({cfg.tablet_low}-{cfg.tablet_high})")
+    return make(DESIRED_KEEP, f"{label}: {batt}% inside hysteresis ({cfg.tablet_low}-{cfg.tablet_high})")

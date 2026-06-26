@@ -306,6 +306,8 @@ _COMMON_POWER_FIELDS = (
     "manual_on_cooldown_seconds",
 )
 _TABLET_FIELDS = ("tablet_low", "tablet_high", "display_entity", "manual_on_cooldown_seconds")
+# Blind charger: same charge thresholds as the tablet, but no display/screen.
+_BLIND_FIELDS = ("tablet_low", "tablet_high")
 _DIFFUSER_FIELDS = (
     "diffuser_on_minutes", "diffuser_off_minutes", "manual_on_cooldown_seconds",
 )
@@ -321,6 +323,8 @@ def advanced_fields_for_kind(kind: str, policy: str) -> tuple[str, ...]:
     k = (kind or "generic").lower()
     if k == "tablet":
         fields: tuple[str, ...] = _TABLET_FIELDS
+    elif k == "blind":
+        fields = _BLIND_FIELDS
     elif k == "diffuser":
         fields = _DIFFUSER_FIELDS
     elif k == "h14_dock":
@@ -341,6 +345,9 @@ def sensors_for_kind(kind: str) -> tuple[str, ...]:
         # A tablet plug usually has both — power for "is being used", battery
         # for charge level; battery is the policy-relevant one.
         return ("power_entity", "battery_entity")
+    if k == "blind":
+        # Blind charger has no meter — only the cover's battery drives policy.
+        return ("battery_entity",)
     return ("power_entity",)
 
 

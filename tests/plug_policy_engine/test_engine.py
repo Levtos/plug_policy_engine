@@ -322,6 +322,49 @@ def test_tablet_holds_in_hysteresis_zone():
     assert d.desired_switch_state == C.DESIRED_KEEP
 
 
+# --------------------------------------------------------------- blind charger
+
+
+def test_blind_charges_below_low_threshold():
+    cfg = _cfg(kind=C.KIND_BLIND, tablet_low=30, tablet_high=80,
+               battery_entity="sensor.cover_batt")
+    d = E.evaluate(cfg, _state(switch_state="off", battery_pct=25), _ctx())
+    assert d.desired_switch_state == C.DESIRED_ON
+    assert d.reason.startswith("blind:")
+
+
+def test_blind_stops_charging_at_high_threshold():
+    cfg = _cfg(kind=C.KIND_BLIND, tablet_low=30, tablet_high=80,
+               battery_entity="sensor.cover_batt")
+    d = E.evaluate(cfg, _state(switch_state="on", battery_pct=82), _ctx())
+    assert d.desired_switch_state == C.DESIRED_OFF
+
+
+def test_blind_holds_in_hysteresis_zone():
+    cfg = _cfg(kind=C.KIND_BLIND, tablet_low=30, tablet_high=80,
+               battery_entity="sensor.cover_batt")
+    d = E.evaluate(cfg, _state(switch_state="on", battery_pct=60), _ctx())
+    assert d.desired_switch_state == C.DESIRED_KEEP
+
+
+def test_blind_battery_unavailable_does_not_stick_off():
+    # Fully discharged cover → battery sensor unavailable. Must recover, not hang off.
+    cfg = _cfg(kind=C.KIND_BLIND, tablet_low=30, tablet_high=80,
+               battery_entity="sensor.cover_batt")
+    d_off = E.evaluate(cfg, _state(switch_state="off", battery_pct="unavailable"), _ctx())
+    assert d_off.desired_switch_state == C.DESIRED_ON
+    d_on = E.evaluate(cfg, _state(switch_state="on", battery_pct="unavailable"), _ctx())
+    assert d_on.desired_switch_state == C.DESIRED_KEEP
+
+
+def test_blind_deep_discharge_guard_under_20pct():
+    cfg = _cfg(kind=C.KIND_BLIND, tablet_low=30, tablet_high=80,
+               battery_entity="sensor.cover_batt")
+    d = E.evaluate(cfg, _state(switch_state="off", battery_pct=12), _ctx())
+    assert d.desired_switch_state == C.DESIRED_ON
+    assert "deep_discharge_guard" in d.blockers
+
+
 # --------------------------------------------------------------- suspended
 
 
