@@ -103,6 +103,11 @@ async def _walk_add(helper, *, switch: str, name: str, kind: str | None = None,
         "kind": kind or "generic",
     }
     await helper.async_step_device_basics(basics)
+    # Policy-driven kinds (generic/denon/h14_dock/appliance) now insert a
+    # dedicated policy step between basics and sensors; self-contained kinds
+    # skip it. Walk through it when present.
+    if helper.flow.last_form.get("step_id") == "device_policy":
+        await helper.async_step_device_policy({"policy": policy})
     # Capture the sensors form so callers can introspect it before submitting.
     sensors_form = helper.flow.last_form
     await helper.async_step_device_sensors(sensors or {})
@@ -210,8 +215,11 @@ async def test_subwoofer_sensors_step_does_not_set_none_default_on_power_field()
     await helper.async_step_add_device()
     await helper.async_step_device_basics({
         "name": "Subwoofer", "switch_entity": "switch.living_subwoofer_plug",
-        "policy": "HB", "kind": "generic",
+        "kind": "generic",
     })
+    # generic is policy-driven → policy step precedes sensors.
+    assert helper.flow.last_form["step_id"] == "device_policy"
+    await helper.async_step_device_policy({"policy": "HB"})
     sensors_form = helper.flow.last_form
     assert sensors_form["step_id"] == "device_sensors"
     schema = sensors_form["schema"]

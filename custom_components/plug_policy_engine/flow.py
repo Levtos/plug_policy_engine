@@ -33,6 +33,8 @@ from . import _suggest
 from .const import (
     ALL_KINDS,
     ALL_POLICIES,
+    POLICY_FIXED_BY_KIND,
+    POLICY_CHOICES_BY_KIND,
     CONF_ACTIVE_THRESHOLD,
     CONF_ACTIVITY,
     CONF_ALLOWED_CONTEXTS,
@@ -127,8 +129,29 @@ def _basics_schema(defaults: dict | None = None) -> vol.Schema:
     return vol.Schema({
         vol.Required(CONF_NAME, default=d.get(CONF_NAME, "")): str,
         vol.Required(CONF_SWITCH, default=d.get(CONF_SWITCH)): _entity("switch"),
-        vol.Required(CONF_POLICY, default=d.get(CONF_POLICY, "HB")): vol.In(ALL_POLICIES),
         vol.Required(CONF_KIND, default=d.get(CONF_KIND, "generic")): vol.In(ALL_KINDS),
+    })
+
+
+# ---- step 1b: policy (only for policy-driven kinds) ----------------------
+
+def fixed_policy_for_kind(kind: str) -> str | None:
+    """The implied policy for a self-contained kind, or None if free/choice."""
+    return POLICY_FIXED_BY_KIND.get((kind or "generic").lower())
+
+
+def policy_choices_for_kind(kind: str) -> list[str]:
+    """Selectable policies for a policy-driven kind (full set unless restricted)."""
+    return POLICY_CHOICES_BY_KIND.get((kind or "generic").lower(), ALL_POLICIES)
+
+
+def _policy_schema(kind: str, defaults: dict | None = None) -> vol.Schema:
+    d = defaults or {}
+    choices = policy_choices_for_kind(kind)
+    current = d.get(CONF_POLICY)
+    default = current if current in choices else ("HB" if "HB" in choices else choices[0])
+    return vol.Schema({
+        vol.Required(CONF_POLICY, default=default): vol.In(choices),
     })
 
 
@@ -409,11 +432,33 @@ class OptionsFlowHelper:
             return self.flow.async_show_form(
                 step_id="device_basics", data_schema=_basics_schema(defaults),
             )
-        # Stash basics in the draft and move to sensors.
+        # Stash basics in the draft and move on.
         self._draft.update(user_input)
         # Add-flow only: fold the matching device preset into the draft.
         # Edit preserves whatever the user already saved.
         self._apply_preset_to_draft()
+        kind = self._draft.get(CONF_KIND, "generic")
+        fixed = fixed_policy_for_kind(kind)
+        if fixed is not None:
+            # Self-contained kind: policy is implied by the kind — set it
+            # and skip the policy step entirely (the engine ignores it
+            # anyway, but we store a canonical value for display).
+            self._draft[CONF_POLICY] = fixed
+            return await self._show_sensors_step()
+        return await self._show_policy_step()
+
+    async def _show_policy_step(self) -> FlowResult:
+        kind = self._draft.get(CONF_KIND, "generic")
+        return self.flow.async_show_form(
+            step_id="device_policy",
+            data_schema=_policy_schema(kind, self._draft),
+            description_placeholders={"preset": self._preset_label_text()},
+        )
+
+    async def async_step_device_policy(self, user_input: dict[str, Any] | None = None) -> FlowResult:
+        if user_input is None:
+            return await self._show_policy_step()
+        self._draft.update(user_input)
         return await self._show_sensors_step()
 
     def _apply_preset_to_draft(self) -> None:

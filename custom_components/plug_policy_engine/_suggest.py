@@ -310,6 +310,9 @@ _TABLET_FIELDS = ("tablet_low", "tablet_high", "display_entity", "manual_on_cool
 _BLIND_FIELDS = ("tablet_low", "tablet_high")
 _DIFFUSER_FIELDS = (
     "diffuser_on_minutes", "diffuser_off_minutes", "manual_on_cooldown_seconds",
+    # The diffuser reads allowed_contexts directly (phase gate), independent
+    # of the SC policy — expose it natively rather than via the policy field.
+    "allowed_contexts",
 )
 _DOCK_FIELDS = _COMMON_POWER_FIELDS + ("wake_signal_only",)
 
@@ -332,8 +335,9 @@ def advanced_fields_for_kind(kind: str, policy: str) -> tuple[str, ...]:
     else:
         # pc, denon, appliance, coffee_maker, bias_light, generic
         fields = _COMMON_POWER_FIELDS
-    # allowed_contexts is only meaningful for Schedule-Context policy.
-    if (policy or "").upper() == "SC":
+    # allowed_contexts is also meaningful for Schedule-Context policy
+    # (on top of any kind that already exposes it natively, e.g. diffuser).
+    if (policy or "").upper() == "SC" and "allowed_contexts" not in fields:
         fields = fields + ("allowed_contexts",)
     return fields
 

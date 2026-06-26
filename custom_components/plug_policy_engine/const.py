@@ -42,6 +42,24 @@ ALL_KINDS = [
     KIND_COFFEE, KIND_BIAS_LIGHT, KIND_DIFFUSER, KIND_TABLET, KIND_BLIND,
 ]
 
+# Config-flow policy selection per kind. The engine already ignores the
+# policy for self-contained kinds (they short-circuit on kind); this map
+# drives whether/how the flow even asks for a policy.
+#   - fixed  → policy is implied; the flow hides the field and sets it.
+#   - choice → only a restricted set is meaningful (see below).
+#   - free   → any policy (generic/denon/h14_dock); not listed here.
+POLICY_FIXED_BY_KIND = {
+    KIND_TABLET: POLICY_SPECIAL,
+    KIND_BLIND: POLICY_SPECIAL,
+    KIND_DIFFUSER: POLICY_SPECIAL,
+    KIND_BIAS_LIGHT: POLICY_SPECIAL,
+    KIND_PC: POLICY_SPECIAL,
+    KIND_COFFEE: POLICY_AO,
+}
+POLICY_CHOICES_BY_KIND = {
+    KIND_APPLIANCE: [POLICY_HB, POLICY_AC],
+}
+
 # Presence (project convention)
 PRESENCE_HOME = "zuhause"
 PRESENCE_AWAY = "abwesend"

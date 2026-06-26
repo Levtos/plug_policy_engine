@@ -331,6 +331,63 @@ def test_sensors_step_includes_battery_only_for_tablet():
     assert "battery_entity" in suggest_module.sensors_for_kind("tablet")
 
 
+def test_diffuser_exposes_allowed_contexts_natively():
+    # Decoupled from SC policy: the diffuser gets its phase gate regardless.
+    fields = suggest_module.advanced_fields_for_kind("diffuser", "SPECIAL")
+    assert "allowed_contexts" in fields
+
+
+# ---------------------------------------------------------------------------
+# 2b) Kind-aware policy: self-contained kinds imply (and hide) the policy.
+# ---------------------------------------------------------------------------
+
+
+def test_fixed_policy_for_self_contained_kinds():
+    for k in ("tablet", "blind", "bias_light", "pc", "diffuser"):
+        assert flow_module.fixed_policy_for_kind(k) == "SPECIAL"
+    assert flow_module.fixed_policy_for_kind("coffee_maker") == "AO"
+    # Policy-driven kinds have no implied policy.
+    for k in ("generic", "denon", "h14_dock", "appliance"):
+        assert flow_module.fixed_policy_for_kind(k) is None
+
+
+def test_policy_choices_restricted_for_appliance():
+    assert flow_module.policy_choices_for_kind("appliance") == ["HB", "AC"]
+    assert flow_module.policy_choices_for_kind("generic") == flow_module.ALL_POLICIES
+
+
+@_run
+async def test_add_device_self_contained_kind_skips_policy_step():
+    hass = _FakeHass(["sensor.bedroom_tablet_plug_battery"])
+    flow = _FakeFlow()
+    helper = flow_module.OptionsFlowHelper(hass, _FakeEntry(), flow)
+    await helper.async_step_add_device()
+    await helper.async_step_device_basics({
+        "name": "Tablet", "switch_entity": "switch.bedroom_tablet_plug",
+        "kind": "tablet",
+    })
+    # No policy step — straight to sensors; policy implied SPECIAL.
+    assert flow.last_form["step_id"] == "device_sensors"
+    assert helper._draft["policy"] == "SPECIAL"
+
+
+@_run
+async def test_add_device_policy_driven_kind_shows_policy_step():
+    hass = _FakeHass([])
+    flow = _FakeFlow()
+    helper = flow_module.OptionsFlowHelper(hass, _FakeEntry(), flow)
+    await helper.async_step_add_device()
+    await helper.async_step_device_basics({
+        "name": "Charger", "switch_entity": "switch.some_generic_plug",
+        "kind": "generic",
+    })
+    assert flow.last_form["step_id"] == "device_policy"
+    assert _schema_keys(flow.last_form["schema"]) == {"policy"}
+    await helper.async_step_device_policy({"policy": "CS"})
+    assert flow.last_form["step_id"] == "device_sensors"
+    assert helper._draft["policy"] == "CS"
+
+
 # ---------------------------------------------------------------------------
 # 3) Multi-step Add Device flow.
 # ---------------------------------------------------------------------------
@@ -345,7 +402,8 @@ async def test_add_device_basics_step_shows_only_basic_fields():
     await helper.async_step_add_device()
     assert flow.last_form["step_id"] == "device_basics"
     keys = _schema_keys(flow.last_form["schema"])
-    assert keys == {"name", "switch_entity", "policy", "kind"}
+    # Policy moved out of basics into its own kind-aware step.
+    assert keys == {"name", "switch_entity", "kind"}
 
 
 @_run

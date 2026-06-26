@@ -55,6 +55,9 @@ class PlugPolicyOptionsFlow(OptionsFlow):
     async def async_step_device_basics(self, user_input=None):
         return await self.helper.async_step_device_basics(user_input)
 
+    async def async_step_device_policy(self, user_input=None):
+        return await self.helper.async_step_device_policy(user_input)
+
     async def async_step_device_sensors(self, user_input=None):
         return await self.helper.async_step_device_sensors(user_input)
 
