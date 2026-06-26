@@ -244,7 +244,7 @@ class PlugPolicyPanel extends HTMLElement {
     const blockers = d.blockers?.length ? d.blockers.map((b) => `<span class="mini">${esc(b)}</span>`).join("") : "-";
     return `<article class="card ${d.device_id === selectedId ? "selected" : ""}" data-device="${esc(d.device_id)}">
       <div class="cardhead"><span class="kind">${kindIcon(d.kind)}</span><span class="name">${esc(d.name)}</span><span class="policy">${esc(d.policy)}</span><span class="dots">⋮</span></div>
-      <div class="row"><span class="label">Ist:</span><span class="state-line"><span class="dot ${stateClass(d.switch_state)}"></span><b class="${stateClass(d.switch_state)}">${esc(fmt(d.switch_state).toUpperCase())}</b><span>${esc(fmt(d.power_w, 0))} W</span><span>active_state</span><b class="${d.active_state === "active" ? "on" : "keep"}">${esc(d.active_state)}</b></span></div>
+      <div class="row"><span class="label">Ist:</span><span class="state-line"><span class="dot ${stateClass(d.switch_state)}"></span><b class="${stateClass(d.switch_state)}">${esc(fmt(d.switch_state).toUpperCase())}</b>${d.metered ? `<span>${esc(fmt(d.power_w, 0))} W</span><span>active_state</span><b class="${d.active_state === "active" ? "on" : "keep"}">${esc(d.active_state)}</b>` : ``}</span></div>
       <div class="row"><span class="label">Soll:</span><span class="state-line"><b class="${desiredClass(d.desired_switch_state)}">⊙ ${esc(d.desired_switch_state)}</b></span></div>
       <div class="row"><span class="label">Grund:</span><span class="reason">${esc(d.reason)}</span></div>
       <div class="row"><span class="label">Blocker:</span><span class="blockers">${blockers}</span></div>
@@ -270,7 +270,7 @@ class PlugPolicyPanel extends HTMLElement {
       <div class="selected-title"><span class="kind">${kindIcon(d.kind)}</span><b>${esc(d.name)}</b><span class="policy">${esc(d.policy)}</span><b class="${stateClass(d.switch_state)}">${esc(fmt(d.switch_state).toUpperCase())}</b></div>
       <div class="section"><h3>Full reason</h3><div>${esc(d.reason)}</div></div>
       <div class="section"><h3>Blockers</h3><div class="blockers">${d.blockers?.length ? d.blockers.map((b) => `<span class="mini">${esc(b)}</span>`).join("") : "-"}</div></div>
-      <div class="section"><h3>Thresholds</h3><div class="kv"><span>active</span><b class="on">&gt; ${esc(fmt(t.active))} W</b><span>idle</span><b>&lt; ${esc(fmt(t.idle))} W</b><span>deadband</span><b class="standby">${esc(fmt(t.deadband_lower))}-${esc(fmt(t.deadband_upper))} W</b></div></div>
+      ${d.metered ? `<div class="section"><h3>Thresholds</h3><div class="kv"><span>active</span><b class="on">&gt; ${esc(fmt(t.active))} W</b><span>idle</span><b>&lt; ${esc(fmt(t.idle))} W</b><span>deadband</span><b class="standby">${esc(fmt(t.deadband_lower))}-${esc(fmt(t.deadband_upper))} W</b></div></div>` : ``}
       <div class="section"><h3>Stable-Off Countdown</h3><div>${seconds(d.stable_off_remaining_s)} verbleibend</div></div>
       <div class="section"><h3>Allowed Contexts</h3><div class="blockers">${(d.allowed_contexts || []).map((c) => `<span class="chip green">${esc(c)}</span>`).join("") || "-"}</div></div>
       <div class="section"><h3>Context Snapshot</h3><div class="kv">${Object.entries(ctx).map(([k,v]) => `<span>${esc(k)}</span><span>${esc(fmt(v))}</span>`).join("")}</div></div>
@@ -284,7 +284,7 @@ class PlugPolicyPanel extends HTMLElement {
     const action = enable ? "Action (Live)" : "Action (Shadow)";
     return `<section class="trace"><h2>Diagnose / Trace</h2><div class="chain">
       <div class="node"><span class="okmark">●</span><b>Context OK</b><small>${esc(Object.values(d.context_snapshot || {}).filter((v) => v !== null && v !== undefined).join(", ") || "-")}</small></div>
-      <div class="node"><span class="okmark">●</span><b>Device Active</b><small>${esc(fmt(d.power_w, 0))} W, active_state: ${esc(d.active_state)}</small></div>
+      <div class="node"><span class="okmark">●</span><b>Device Active</b><small>${d.metered ? `${esc(fmt(d.power_w, 0))} W, active_state: ${esc(d.active_state)}` : `kein Strommesser`}</small></div>
       <div class="node"><span class="okmark">●</span><b>Protected</b><small>${esc(protectedReason)}</small></div>
       <div class="node active"><span class="okmark">●</span><b>Desired: ${esc(d.desired_switch_state)}</b><small>${esc(d.reason)}</small></div>
       <div class="node"><span class="${enable ? "okmark" : "standby"}">●</span><b>${action}</b><small>${enable ? "switch service allowed" : "Keine Schaltaktion, nur Anzeige"}</small></div>

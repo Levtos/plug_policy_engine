@@ -636,6 +636,8 @@ class PlugPolicyCoordinator:
             "switch_entity": cfg.switch_entity,
             "switch_state": st.switch_state,
             "power_w": dec.power_w if dec else _safe_float(st.power_w),
+            "metered": cfg.power_entity is not None
+            and self.hass.states.get(cfg.power_entity) is not None,
             "active_state": dec.active_state if dec else "unknown",
             "battery_pct": _safe_float(st.battery_pct),
             "desired_switch_state": dec.desired_switch_state if dec else DESIRED_KEEP,
