@@ -385,3 +385,20 @@ def test_coffee_maker_is_wake_signal_only():
                    ha_just_started=True)
     assert d.desired_switch_state == C.DESIRED_ON
     assert "wake indicator" in d.reason
+
+
+# --------------------------------------------------------------- registry cleanup
+
+
+def test_device_dev_id_from_identifier_parses_and_protects_hub():
+    mod, entry = "plug_policy_engine", "01ENTRY"
+    # Per-device identifier → dev_id extracted (handles underscores in dev_id).
+    assert C.device_dev_id_from_identifier(
+        f"{mod}_{entry}_dev_603c3dbe", mod, entry) == "dev_603c3dbe"
+    assert C.device_dev_id_from_identifier(
+        f"{mod}_{entry}_living_switch_plug", mod, entry) == "living_switch_plug"
+    # Hub identifier → None (must never be treated as a removable device).
+    assert C.device_dev_id_from_identifier(f"{mod}_{entry}", mod, entry) is None
+    # Foreign entry → None.
+    assert C.device_dev_id_from_identifier(
+        f"{mod}_OTHER_dev_x", mod, entry) is None

@@ -200,3 +200,23 @@ def service_name(_module_id: str, action: str) -> str:
 def unique_id(_module_id: str, *parts: str) -> str:
     """Standalone unique_id with integration prefix."""
     return "_".join((DOMAIN, *parts))
+
+
+def device_dev_id_from_identifier(
+    identifier: str, module_id: str, entry_id: str
+) -> str | None:
+    """Extract the plug_policy device dev_id from a device-registry identifier.
+
+    Per-device identifier = ``<module_id>_<entry_id>_<dev_id>`` (see
+    entities._dev_device_info). Returns the dev_id, or ``None`` for the hub
+    identifier (``<module_id>_<entry_id>``) or any identifier not belonging to
+    this entry. Used to detect/prune stale devices left behind after a device
+    is removed from the config.
+    """
+    prefix = f"{module_id}_{entry_id}"
+    if identifier == prefix:
+        return None  # hub device
+    head = f"{prefix}_"
+    if identifier.startswith(head):
+        return identifier[len(head):]
+    return None

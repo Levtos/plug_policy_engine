@@ -22,6 +22,7 @@ from .const import (
     LEGACY_GLOBAL_SOURCE_MAP,
     LEGACY_POWER_SOURCE_MAP,
     MODULE_ID,
+    device_dev_id_from_identifier,
     service_name,
 )
 from .coordinator import PlugPolicyCoordinator
@@ -77,12 +78,73 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     bucket["coordinator"] = coord
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+    _async_prune_stale_devices(hass, entry, coord)
     await async_setup_view(hass)
     if not hass.data[DOMAIN].get(DATA_WS_REGISTERED):
         async_setup_websocket_api(hass)
         hass.data[DOMAIN][DATA_WS_REGISTERED] = True
     entry.async_on_unload(entry.add_update_listener(_async_reload_on_options))
     return True
+
+
+async def async_remove_config_entry_device(
+    hass: HomeAssistant, config_entry: ConfigEntry, device_entry
+) -> bool:
+    """Allow deleting plug_policy devices that are no longer configured.
+
+    Without this, HA hides the device "Delete" button (supports_remove_device
+    stayed false) and devices removed from the config lingered as
+    ``unavailable`` ghosts. Returns True for stale devices (dev_id not in the
+    current config); protects the hub device and currently-configured devices.
+    """
+    bucket = (
+        hass.data.get(DOMAIN, {})
+        .get(DATA_ENTRIES, {})
+        .get(config_entry.entry_id, {})
+    )
+    coord = bucket.get("coordinator")
+    configured = set(coord.configs) if coord is not None else set()
+    for domain, identifier in device_entry.identifiers:
+        if domain != DOMAIN:
+            continue
+        dev_id = device_dev_id_from_identifier(
+            identifier, MODULE_ID, config_entry.entry_id
+        )
+        if dev_id is None:
+            return False  # hub device — never removable here
+        return dev_id not in configured
+    return True
+
+
+def _async_prune_stale_devices(
+    hass: HomeAssistant, entry: ConfigEntry, coord: PlugPolicyCoordinator
+) -> None:
+    """Drop registry devices/entities for plug_policy devices removed from the
+    config. Self-heals the ``unavailable`` ghosts left behind before
+    async_remove_config_entry_device existed."""
+    from homeassistant.helpers import device_registry as dr
+
+    configured = set(coord.configs)
+    dev_reg = dr.async_get(hass)
+    removed = 0
+    for device in list(dev_reg.devices.values()):
+        if entry.entry_id not in device.config_entries:
+            continue
+        our_ident = next(
+            (ident for (domain, ident) in device.identifiers if domain == DOMAIN),
+            None,
+        )
+        if our_ident is None:
+            continue
+        dev_id = device_dev_id_from_identifier(our_ident, MODULE_ID, entry.entry_id)
+        if dev_id is None or dev_id in configured:
+            continue  # hub device or still configured
+        dev_reg.async_remove_device(device.id)  # cascades to its entities
+        removed += 1
+    if removed:
+        _LOGGER.info(
+            "Pruned %d stale plug_policy device(s) from the registry", removed
+        )
 
 
 async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
