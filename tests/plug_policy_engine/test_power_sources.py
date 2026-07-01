@@ -261,6 +261,44 @@ def test_coordinator_reads_master_active_hint_and_keeps_watt_for_display():
     assert decision.power_w == 205.0
 
 
+def test_coordinator_marks_pc_switch_on_as_manual_cooldown():
+    mod = _load_coordinator_module()
+    hass = _FakeHass({
+        "switch.living_pc_plug": _FakeState("off"),
+        "sensor.benni_master_pc": _FakeState("off", {"is_active": False, "watt": 0.0}),
+    })
+    entry = _FakeEntry({
+        "devices": [
+            {
+                "device_id": "living_pc_plug",
+                "name": "PC",
+                "switch_entity": "switch.living_pc_plug",
+                "power_entity": "sensor.benni_master_pc",
+                "policy": "HB",
+                "kind": "pc",
+                "manual_on_cooldown_seconds": 900,
+                "stable_off_seconds": 0,
+            }
+        ]
+    })
+
+    coord = mod.PlugPolicyCoordinator(hass, entry)
+    cfg = coord.configs["living_pc_plug"]
+    coord._refresh_device_state(cfg)
+    hass.states._states["switch.living_pc_plug"] = _FakeState("on")
+
+    state = coord._refresh_device_state(cfg)
+    decision = engine.evaluate(
+        cfg,
+        state,
+        engine.GlobalContext(bio=engine.BIO_SLEEP, now_ts=state.manual_on_until_ts - 100),
+    )
+
+    assert state.manual_on_until_ts is not None
+    assert decision.desired_switch_state == engine.DESIRED_KEEP
+    assert "manual_on_cooldown" in decision.blockers
+
+
 def test_coordinator_reads_household_master_device_attributes():
     mod = _load_coordinator_module()
     hass = _FakeHass({

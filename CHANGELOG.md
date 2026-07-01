@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.5
+
+- PC manual wake guard: a live `off -> on` transition of the PC plug now starts
+  the existing manual-on cooldown automatically. This prevents Plug Policy from
+  cutting the PC immediately during sleep before boot power crosses the active
+  threshold.
+
 ## 0.2.0
 
 - **Tablet-Display-Policy (FLEET-156).** Das `tablet`-Kind bekommt zusätzlich zur
