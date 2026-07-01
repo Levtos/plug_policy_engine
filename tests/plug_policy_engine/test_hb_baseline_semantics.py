@@ -165,3 +165,45 @@ def test_appliance_unknown_power_protected_under_hb_and_ac():
         )
         assert d.desired_switch_state == C.DESIRED_KEEP, policy
         assert "power_unknown" in d.blockers, policy
+
+
+# ---------------------------------------------------------------------------
+# AO appliance: never cut (even on truly-away + idle) and ensure-on so the
+# washer/dryer/dishwasher stays (remote-)startable.
+# ---------------------------------------------------------------------------
+
+
+def test_ao_appliance_idle_truly_away_keeps_not_off():
+    d = E.evaluate(
+        _cfg(policy=C.POLICY_AO, kind=C.KIND_APPLIANCE,
+             unknown_behavior=C.UNK_ASSUME_IDLE, stable_off_seconds=0),
+        _state(switch_state="on", power_w=0.0),
+        _ctx(presence=C.PRESENCE_AWAY),
+    )
+    assert d.desired_switch_state == C.DESIRED_KEEP
+    assert "AO appliance" in d.reason
+
+
+def test_ao_appliance_off_while_away_ensures_on():
+    d = E.evaluate(
+        _cfg(policy=C.POLICY_AO, kind=C.KIND_APPLIANCE,
+             unknown_behavior=C.UNK_ASSUME_IDLE),
+        _state(switch_state="off", power_w=0.0),
+        _ctx(presence=C.PRESENCE_AWAY),
+    )
+    assert d.desired_switch_state == C.DESIRED_ON
+    assert "must always be on" in d.reason
+
+
+def test_ao_appliance_running_still_protected():
+    d = E.evaluate(
+        _cfg(policy=C.POLICY_AO, kind=C.KIND_APPLIANCE),
+        _state(switch_state="on", power_w=1200.0),
+        _ctx(presence=C.PRESENCE_AWAY),
+    )
+    assert d.desired_switch_state == C.DESIRED_KEEP
+    assert "program_running" in d.blockers
+
+
+def test_ao_is_offered_as_appliance_policy_choice():
+    assert C.POLICY_AO in C.POLICY_CHOICES_BY_KIND[C.KIND_APPLIANCE]

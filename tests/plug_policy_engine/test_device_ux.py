@@ -352,7 +352,8 @@ def test_fixed_policy_for_self_contained_kinds():
 
 
 def test_policy_choices_restricted_for_appliance():
-    assert flow_module.policy_choices_for_kind("appliance") == ["HB", "AC"]
+    # AO added so washer/dryer/dishwasher can be pinned "never cut + ensure-on".
+    assert flow_module.policy_choices_for_kind("appliance") == ["HB", "AC", "AO"]
     assert flow_module.policy_choices_for_kind("generic") == flow_module.ALL_POLICIES
 
 
