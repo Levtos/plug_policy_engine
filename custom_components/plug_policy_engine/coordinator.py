@@ -58,6 +58,7 @@ from .const import (
     DATA_ENTRIES,
     DOMAIN,
     GLOBAL_PREFILL,
+    KIND_PC,
     MODULE_ID,
     STORAGE_VERSION,
 )
@@ -324,7 +325,16 @@ class PlugPolicyCoordinator:
 
     def _refresh_device_state(self, cfg: DeviceConfig) -> DeviceState:
         st = self.states[cfg.device_id]
+        previous_switch_state = st.switch_state
         st.switch_state = self._read_str(cfg.switch_entity)
+        if (
+            cfg.kind == KIND_PC
+            and previous_switch_state == "off"
+            and st.switch_state == "on"
+        ):
+            st.manual_on_until_ts = (
+                dt_util.utcnow().timestamp() + cfg.manual_on_cooldown_seconds
+            )
         self._clear_pending_action_if_reached(cfg.device_id, st.switch_state)
         power_entity = self._resolve_power_entity(cfg)
         st.power_w = self._read_power(power_entity, cfg)
