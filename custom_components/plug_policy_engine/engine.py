@@ -429,6 +429,12 @@ def _decide_appliance(cfg, state, ctx, active_state, make) -> Decision:
         return make(DESIRED_KEEP, "appliance power unknown — protect program",
                     ["power_unknown"])
     # Idle:
+    if cfg.policy == POLICY_AO:
+        # Always-On: never cut, and ensure the plug is on so the appliance
+        # stays (remote-)startable. Active/unknown were already protected above.
+        if state.switch_state == "off":
+            return make(DESIRED_ON, "AO appliance: must always be on")
+        return make(DESIRED_KEEP, "AO appliance: already on — never cut")
     if cfg.policy == POLICY_AC:
         if ctx.is_truly_away:
             if state.switch_state == "off":

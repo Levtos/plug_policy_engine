@@ -57,7 +57,9 @@ POLICY_FIXED_BY_KIND = {
     KIND_COFFEE: POLICY_AO,
 }
 POLICY_CHOICES_BY_KIND = {
-    KIND_APPLIANCE: [POLICY_HB, POLICY_AC],
+    # AO = never cut + ensure-on: for washer/dryer/dishwasher you must be
+    # able to (remote-)start them, so cutting the plug on away is wrong.
+    KIND_APPLIANCE: [POLICY_HB, POLICY_AC, POLICY_AO],
 }
 
 # Presence (project convention)
