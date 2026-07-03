@@ -50,6 +50,7 @@ from .const import (
     CONF_DIFFUSER_ON_MIN,
     CONF_ENABLE_CONTROL,
     CONF_ENTERTAINMENT,
+    CONF_GAMING_SOURCE,
     CONF_IDLE_THRESHOLD,
     CONF_KIND,
     CONF_MANUAL_COOLDOWN,
@@ -108,6 +109,11 @@ def _globals_schema(defaults: dict[str, Any] | None = None) -> vol.Schema:
         _opt_entity(CONF_DAY, d.get(CONF_DAY) or GLOBAL_PREFILL[CONF_DAY]):
             _entity(["input_select", "sensor"]),
         _opt_entity(CONF_MEDIA, d.get(CONF_MEDIA) or GLOBAL_PREFILL[CONF_MEDIA]):
+            _entity(["input_select", "sensor"]),
+        _opt_entity(
+            CONF_GAMING_SOURCE,
+            d.get(CONF_GAMING_SOURCE) or GLOBAL_PREFILL[CONF_GAMING_SOURCE],
+        ):
             _entity(["input_select", "sensor"]),
         _opt_entity(
             CONF_ENTERTAINMENT,

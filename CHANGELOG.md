@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.3.1
+
+- FLEET-220: Bias-Light policy now follows the TV stack instead of broad
+  `entertainment_active`. PC gaming (`media_context=gaming`,
+  `gaming_source=pc`) no longer turns on the bias-light plug, while TV,
+  streaming, and TV gaming still can.
+- Add `gaming_source_entity` as a global selector with Benni media-state
+  prefill, options-flow label, panel visibility, and regression coverage.
+
 ## 0.2.5
 
 - PC manual wake guard: a live `off -> on` transition of the PC plug now starts

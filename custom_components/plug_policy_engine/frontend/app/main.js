@@ -193,6 +193,7 @@ class PlugPolicyPanel extends HTMLElement {
           ${this._contextChip("green", "◌", "Bio", ctx.bio)}
           ${this._contextChip("orange", "☀", "Tagesphase", ctx.day_phase)}
           ${this._contextChip("blue", "⌁", "Media", ctx.media_context)}
+          ${this._contextChip("blue", "◇", "Gaming", ctx.gaming_source)}
           ${this._contextChip("pink", "▣", "Entertainment", ctx.entertainment_active)}
         </section>
         <div class="work">

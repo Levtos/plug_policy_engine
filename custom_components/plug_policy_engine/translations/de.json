@@ -9,6 +9,7 @@
           "bio_entity": "Bio-Status (awake / sleep)",
           "day_entity": "Tagesphase",
           "media_context_entity": "Medien-Kontext",
+          "gaming_source_entity": "Gaming-Quelle",
           "entertainment_active_entity": "Entertainment aktiv",
           "activity_entity": "Aktivität (optional)",
           "enable_control": "Integration darf Steckdosen schalten",

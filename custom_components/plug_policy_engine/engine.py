@@ -43,6 +43,7 @@ class GlobalContext:
     bio: Optional[str] = None            # awake / sleep
     day_phase: Optional[str] = None      # morning/day/evening/night
     media_context: Optional[str] = None  # e.g. "movie", "music", "idle"
+    gaming_source: Optional[str] = None  # e.g. "tv", "pc", "none"
     entertainment_active: Optional[bool] = None
     activity: Optional[str] = None
     now_ts: float = 0.0                  # seconds since epoch (testable)
@@ -231,6 +232,7 @@ def evaluate(
         "bio": ctx.bio,
         "day_phase": ctx.day_phase,
         "media_context": ctx.media_context,
+        "gaming_source": ctx.gaming_source,
         "entertainment_active": ctx.entertainment_active,
         "activity": ctx.activity,
     }
@@ -450,22 +452,24 @@ def _decide_appliance(cfg, state, ctx, active_state, make) -> Decision:
 
 
 def _decide_bias_light(cfg, state, ctx, make) -> Decision:
-    """Bias Light follows entertainment_active / media_context, not legacy activity states."""
+    """Bias Light follows the TV stack, not broad entertainment activity."""
     if ctx.asleep:
         if state.switch_state == "off":
             return make(DESIRED_KEEP, "bias light: sleep — already off", ["bio=sleep"])
         return make(DESIRED_OFF, "bias light: stop on sleep", ["bio=sleep"])
 
-    ent = ctx.entertainment_active
     media = (ctx.media_context or "").lower()
-    want_on = bool(ent) or media in {"movie", "tv", "video"}
+    gaming_source = (ctx.gaming_source or "").lower()
+    want_on = media in {"movie", "streaming", "tv", "video"} or (
+        media == "gaming" and gaming_source == "tv"
+    )
     if want_on:
         if state.switch_state == "on":
-            return make(DESIRED_KEEP, "bias light: entertainment active, already on")
-        return make(DESIRED_ON, "bias light: entertainment active")
+            return make(DESIRED_KEEP, "bias light: TV stack active, already on")
+        return make(DESIRED_ON, "bias light: TV stack active")
     if state.switch_state == "off":
-        return make(DESIRED_KEEP, "bias light: no entertainment, already off")
-    return make(DESIRED_OFF, "bias light: entertainment inactive")
+        return make(DESIRED_KEEP, "bias light: TV stack inactive, already off")
+    return make(DESIRED_OFF, "bias light: TV stack inactive")
 
 
 def _decide_diffuser(cfg, state, ctx, make) -> Decision:
