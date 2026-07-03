@@ -9,6 +9,7 @@
           "bio_entity": "Bio state (awake / sleep)",
           "day_entity": "Day phase",
           "media_context_entity": "Media context",
+          "gaming_source_entity": "Gaming source",
           "entertainment_active_entity": "Entertainment active",
           "activity_entity": "Activity (optional)",
           "enable_control": "Allow integration to switch devices",

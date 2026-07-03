@@ -35,6 +35,7 @@ from .const import (
     CONF_DIFFUSER_ON_MIN,
     CONF_ENABLE_CONTROL,
     CONF_ENTERTAINMENT,
+    CONF_GAMING_SOURCE,
     CONF_IDLE_THRESHOLD,
     CONF_KIND,
     CONF_MANUAL_COOLDOWN,
@@ -115,6 +116,7 @@ class PlugPolicyCoordinator:
             "bio": self._global_entity(data, CONF_BIO),
             "day": self._global_entity(data, CONF_DAY),
             "media": self._global_entity(data, CONF_MEDIA),
+            "gaming_source": self._global_entity(data, CONF_GAMING_SOURCE),
             "entertainment": self._global_entity(data, CONF_ENTERTAINMENT),
             "activity": self._global_entity(data, CONF_ACTIVITY),
         }
@@ -318,6 +320,7 @@ class PlugPolicyCoordinator:
             bio=self._read_str(self.global_entities["bio"]),
             day_phase=self._read_str(self.global_entities["day"]),
             media_context=self._read_str(self.global_entities["media"]),
+            gaming_source=self._read_str(self.global_entities["gaming_source"]),
             entertainment_active=self._read_bool(self.global_entities["entertainment"]),
             activity=self._read_str(self.global_entities["activity"]),
             now_ts=dt_util.utcnow().timestamp(),
@@ -352,6 +355,7 @@ class PlugPolicyCoordinator:
             "bio": ctx.bio,
             "day_phase": ctx.day_phase,
             "media_context": ctx.media_context,
+            "gaming_source": ctx.gaming_source,
             "entertainment_active": ctx.entertainment_active,
             "activity": ctx.activity,
         }

@@ -24,6 +24,7 @@ vorbelegt:
 - Bio: `sensor.benni_combined_context_bio_state`
 - Day: `sensor.benni_combined_context_day_state`
 - Media: `sensor.benni_media_state_media_context`
+- Gaming Source: `sensor.benni_media_state_gaming_source`
 - Entertainment: `binary_sensor.benni_media_state_entertainment_active`
 - Activity: `sensor.benni_combined_context_activity_state`
 
@@ -55,8 +56,8 @@ und wird deshalb nicht an das `benni_*`-Namensschema angepasst.
   unterbrochen. Power=unknown → geschützt.
 - **coffee_maker** — AO + `wake_signal_only`: dient nur als Wake-Indiz, wird
   niemals automatisch geschaltet.
-- **bias_light** — folgt `entertainment_active` bzw. `media_context` (movie/tv/video),
-  **nicht** alten Activity-Detailstates.
+- **bias_light** — folgt dem TV-Stack: `media_context` tv/streaming/movie/video
+  oder gaming mit `gaming_source=tv`. PC-Gaming schaltet das Bias-Light nicht ein.
 - **diffuser** — SC mit 15/15-Takt; läuft nur awake + zuhause + erlaubte Phase.
   Stoppt sofort bei sleep, away oder night.
 - **tablet** — 40/80-Ladelogik 24/7 unabhängig von Presence/Bio. Unter 20% gilt
@@ -160,7 +161,7 @@ Die Decision-Engine läuft ohne Home-Assistant-Mock. Abgedeckt:
 - AO/CS off bei HA-Start → on
 - PC aktiv → niemals off; PC idle + sleep → off; PC manual-on cooldown
 - Tablet <40 → on; ≥80 → off; unavailable → on; <20 % deep-discharge
-- Bias light folgt `entertainment_active` / `media_context`
+- Bias light folgt TV-/Streaming-Kontext und TV-Gaming, nicht PC-Gaming
 - Diffuser stoppt bei sleep / away / night und folgt 15/15-Zyklus
 - SPECIAL & suspend halten an
 

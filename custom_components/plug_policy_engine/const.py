@@ -126,6 +126,7 @@ CONF_PRESENCE = "presence_entity"
 CONF_BIO = "bio_entity"
 CONF_DAY = "day_entity"
 CONF_MEDIA = "media_context_entity"
+CONF_GAMING_SOURCE = "gaming_source_entity"
 CONF_ENTERTAINMENT = "entertainment_active_entity"
 CONF_ACTIVITY = "activity_entity"
 
@@ -134,6 +135,7 @@ GLOBAL_PREFILL: Final[dict[str, str]] = {
     CONF_BIO: "sensor.benni_combined_context_bio_state",
     CONF_DAY: "sensor.benni_combined_context_day_state",
     CONF_MEDIA: "sensor.benni_media_state_media_context",
+    CONF_GAMING_SOURCE: "sensor.benni_media_state_gaming_source",
     CONF_ENTERTAINMENT: "binary_sensor.benni_media_state_entertainment_active",
     CONF_ACTIVITY: "sensor.benni_combined_context_activity_state",
 }
@@ -144,6 +146,7 @@ LEGACY_GLOBAL_SOURCE_MAP: Final[dict[str, str]] = {
     "sensor.context_day_state_combined": GLOBAL_PREFILL[CONF_DAY],
     "sensor.context_activity_state_combined": GLOBAL_PREFILL[CONF_ACTIVITY],
     "sensor.benni_media_context_media_context": GLOBAL_PREFILL[CONF_MEDIA],
+    "sensor.benni_media_context_gaming_source": GLOBAL_PREFILL[CONF_GAMING_SOURCE],
     "binary_sensor.benni_media_context_entertainment_active": GLOBAL_PREFILL[CONF_ENTERTAINMENT],
 }
 

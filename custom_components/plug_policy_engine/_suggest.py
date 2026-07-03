@@ -180,6 +180,10 @@ _PROFILE_GLOBALS: dict[str, dict[str, tuple[str, ...]]] = {
             "sensor.benni_media_state_media_context",
             "sensor.benni_media_context_media_context",
         ),
+        "gaming_source_entity": (
+            "sensor.benni_media_state_gaming_source",
+            "sensor.benni_media_context_gaming_source",
+        ),
         "entertainment_active_entity": (
             "binary_sensor.benni_media_state_entertainment_active",
             "binary_sensor.benni_media_context_entertainment_active",

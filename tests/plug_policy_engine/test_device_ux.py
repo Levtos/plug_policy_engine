@@ -172,6 +172,7 @@ def test_profile_global_prefill_prefers_standalone_profile_entities():
         "sensor.benni_core_state_bio_state",
         "sensor.benni_core_state_day_state",
         "sensor.benni_media_state_media_context",
+        "sensor.benni_media_state_gaming_source",
         "binary_sensor.benni_media_state_entertainment_active",
         "sensor.benni_core_state_activity_state",
     ])
@@ -181,6 +182,7 @@ def test_profile_global_prefill_prefers_standalone_profile_entities():
         "bio_entity": "sensor.benni_core_state_bio_state",
         "day_entity": "sensor.benni_core_state_day_state",
         "media_context_entity": "sensor.benni_media_state_media_context",
+        "gaming_source_entity": "sensor.benni_media_state_gaming_source",
         "entertainment_active_entity": "binary_sensor.benni_media_state_entertainment_active",
         "activity_entity": "sensor.benni_core_state_activity_state",
     }
@@ -192,6 +194,7 @@ def test_profile_global_prefill_falls_back_to_legacy_entities():
         "sensor.benni_core_user_bio_state",
         "sensor.benni_core_day_state",
         "sensor.benni_media_context_media_context",
+        "sensor.benni_media_context_gaming_source",
         "binary_sensor.benni_media_context_entertainment_active",
         "sensor.context_activity_state_combined",
     ])
@@ -200,6 +203,7 @@ def test_profile_global_prefill_falls_back_to_legacy_entities():
     assert defaults["bio_entity"] == "sensor.benni_core_user_bio_state"
     assert defaults["day_entity"] == "sensor.benni_core_day_state"
     assert defaults["media_context_entity"] == "sensor.benni_media_context_media_context"
+    assert defaults["gaming_source_entity"] == "sensor.benni_media_context_gaming_source"
     assert defaults["entertainment_active_entity"] == (
         "binary_sensor.benni_media_context_entertainment_active"
     )

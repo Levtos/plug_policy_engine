@@ -229,10 +229,25 @@ def test_appliance_idle_and_away_cuts_under_ac():
 # --------------------------------------------------------------- bias light
 
 
-def test_bias_light_on_when_entertainment_active():
+def test_bias_light_does_not_turn_on_for_pc_gaming_entertainment():
     cfg = _cfg(kind=C.KIND_BIAS_LIGHT, policy=C.POLICY_HB)
     d = E.evaluate(cfg, _state(switch_state="off"),
-                   _ctx(entertainment_active=True))
+                   _ctx(
+                       media_context="gaming",
+                       gaming_source="pc",
+                       entertainment_active=True,
+                   ))
+    assert d.desired_switch_state == C.DESIRED_KEEP
+
+
+def test_bias_light_on_for_tv_gaming():
+    cfg = _cfg(kind=C.KIND_BIAS_LIGHT, policy=C.POLICY_HB)
+    d = E.evaluate(cfg, _state(switch_state="off"),
+                   _ctx(
+                       media_context="gaming",
+                       gaming_source="tv",
+                       entertainment_active=True,
+                   ))
     assert d.desired_switch_state == C.DESIRED_ON
 
 
