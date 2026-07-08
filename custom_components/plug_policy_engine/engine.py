@@ -160,6 +160,13 @@ def _battery_int(b: Any) -> Optional[int]:
         return None
 
 
+def _tablet_charge_overrides_suspend(cfg: DeviceConfig, state: DeviceState) -> bool:
+    if cfg.kind != KIND_TABLET:
+        return False
+    batt = _battery_int(state.battery_pct)
+    return batt is None or batt < cfg.tablet_low
+
+
 def _classify_active(cfg: DeviceConfig, state: DeviceState) -> str:
     """Return 'active' / 'idle' / 'unknown'."""
     if isinstance(state.active_hint, bool):
@@ -275,9 +282,11 @@ def evaluate(
         )
 
     # Service: policy suspended → never act
-    if state.suspended:
+    if state.suspended and not _tablet_charge_overrides_suspend(cfg, state):
         blockers.append("policy_suspended")
         return make(DESIRED_KEEP, "policy suspended for this device")
+    if state.suspended:
+        blockers.append("policy_suspended_bypassed")
 
     # Wake-signal-only devices (coffee maker) report decisions but never schedule cuts.
     if cfg.wake_signal_only or cfg.kind == KIND_COFFEE:

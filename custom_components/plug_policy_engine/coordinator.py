@@ -66,8 +66,10 @@ from .const import (
 from . import _suggest
 from .apply_guard import (
     MIN_COMMAND_INTERVAL_SECONDS,
+    allows_auto_suspend_for_reassert,
     debounce_suppresses,
     record_reassert_and_should_suspend,
+    service_target_state_available,
 )
 from .engine import Decision, DeviceConfig, DeviceState, GlobalContext, evaluate
 from .storage import make_store
@@ -162,6 +164,7 @@ class PlugPolicyCoordinator:
         self._last_cooldown_log_ts_by_entity: dict[str, float] = {}
         self._reassert_history_by_entity: dict[str, list[tuple[str, float]]] = {}
         self._auto_suspended_by_device: dict[str, dict[str, Any]] = {}
+        self._display_unavailable_log_ts_by_entity: dict[str, float] = {}
         self.last_context: dict[str, Any] = {}
         self.last_update_ts: float | None = None
 
@@ -476,7 +479,12 @@ class PlugPolicyCoordinator:
                 now_ts,
             )
             self._reassert_history_by_entity[cfg.switch_entity] = history
-            if should_suspend:
+            if should_suspend and allows_auto_suspend_for_reassert(
+                kind=cfg.kind,
+                target_service=target,
+                battery_pct=st.battery_pct,
+                tablet_low=cfg.tablet_low,
+            ):
                 st.suspended = True
                 self._auto_suspended_by_device[cfg.device_id] = {
                     "service": target,
@@ -489,6 +497,13 @@ class PlugPolicyCoordinator:
                     cfg.device_id,
                     cfg.switch_entity,
                     len(history),
+                    target,
+                )
+            elif should_suspend:
+                _LOGGER.warning(
+                    "plug_policy_engine: kept %s active despite repeated %s commands; "
+                    "tablet charging fail-safe is active",
+                    cfg.device_id,
                     target,
                 )
             self.last_action[cfg.device_id] = {
@@ -514,6 +529,17 @@ class PlugPolicyCoordinator:
             return
         target_state = "on" if dec.desired_display_state == DESIRED_ON else "off"
         current = (st.display_state or "").lower()
+        if not service_target_state_available(current):
+            now_ts = dt_util.utcnow().timestamp()
+            last_log_ts = self._display_unavailable_log_ts_by_entity.get(cfg.display_entity)
+            if last_log_ts is None or now_ts - last_log_ts >= MIN_COMMAND_INTERVAL_SECONDS:
+                self._display_unavailable_log_ts_by_entity[cfg.display_entity] = now_ts
+                _LOGGER.warning(
+                    "plug_policy_engine: skipped display service for %s; current state is %r",
+                    cfg.display_entity,
+                    st.display_state,
+                )
+            return
         if current == target_state:
             return
         service = "turn_on" if dec.desired_display_state == DESIRED_ON else "turn_off"

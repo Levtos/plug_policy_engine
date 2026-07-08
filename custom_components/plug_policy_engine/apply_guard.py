@@ -14,7 +14,7 @@ whether the target was reached, so it survives that brief read.
 """
 from __future__ import annotations
 
-from typing import Optional, Sequence, Tuple
+from typing import Any, Optional, Sequence, Tuple
 
 # Minimum seconds between two *identical* switch commands to the same device.
 # Legitimate policy commands for these device kinds are minutes apart
@@ -23,6 +23,51 @@ from typing import Optional, Sequence, Tuple
 MIN_COMMAND_INTERVAL_SECONDS = 30.0
 NON_LATCH_FAILURE_THRESHOLD = 5
 NON_LATCH_WINDOW_SECONDS = 600.0
+_UNKNOWN_STATES = {"", "none", "unknown", "unavailable"}
+
+
+def state_is_unknown_or_unavailable(value: Any) -> bool:
+    """Return True for transient HA states that should not be trusted."""
+    if value is None:
+        return True
+    return str(value).strip().lower() in _UNKNOWN_STATES
+
+
+def service_target_state_available(current_state: Any) -> bool:
+    """Whether a service target's current state is safe to call.
+
+    Used for optional display targets. The charger switch path stays fail-safe
+    and may still send a throttled turn_on when charging is needed.
+    """
+    return not state_is_unknown_or_unavailable(current_state)
+
+
+def _battery_int(value: Any) -> int | None:
+    if state_is_unknown_or_unavailable(value):
+        return None
+    try:
+        return int(float(value))
+    except (TypeError, ValueError):
+        return None
+
+
+def allows_auto_suspend_for_reassert(
+    *,
+    kind: str,
+    target_service: str,
+    battery_pct: Any,
+    tablet_low: int,
+) -> bool:
+    """Return False for tablet charging paths that must fail safe.
+
+    Repeated turn_on commands for a tablet with low or unknown battery should
+    not auto-suspend the policy: that would block the recovery path FLEET-170
+    is about. Other device kinds and turn_off paths keep the non-latching guard.
+    """
+    if kind != "tablet" or target_service != "turn_on":
+        return True
+    battery = _battery_int(battery_pct)
+    return battery is not None and battery >= tablet_low
 
 
 def debounce_suppresses(
