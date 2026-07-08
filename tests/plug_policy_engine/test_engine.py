@@ -337,6 +337,67 @@ def test_tablet_holds_in_hysteresis_zone():
     assert d.desired_switch_state == C.DESIRED_KEEP
 
 
+def test_tablet_battery_unavailable_overrides_suspend_for_charging():
+    cfg = _cfg(kind=C.KIND_TABLET, tablet_low=40, tablet_high=80,
+               battery_entity="sensor.batt")
+    d = E.evaluate(
+        cfg,
+        _state(switch_state="off", battery_pct="unavailable", suspended=True),
+        _ctx(),
+    )
+    assert d.desired_switch_state == C.DESIRED_ON
+    assert "policy_suspended_bypassed" in d.blockers
+
+
+def test_tablet_battery_unknown_overrides_suspend_for_charging():
+    cfg = _cfg(kind=C.KIND_TABLET, tablet_low=40, tablet_high=80,
+               battery_entity="sensor.batt")
+    d = E.evaluate(
+        cfg,
+        _state(switch_state="off", battery_pct="unknown", suspended=True),
+        _ctx(),
+    )
+    assert d.desired_switch_state == C.DESIRED_ON
+    assert "policy_suspended_bypassed" in d.blockers
+
+
+def test_tablet_not_needing_charge_keeps_suspend_behavior():
+    cfg = _cfg(kind=C.KIND_TABLET, tablet_low=40, tablet_high=80,
+               battery_entity="sensor.batt")
+    d = E.evaluate(
+        cfg,
+        _state(switch_state="on", battery_pct=60, suspended=True),
+        _ctx(),
+    )
+    assert d.desired_switch_state == C.DESIRED_KEEP
+    assert "policy_suspended" in d.blockers
+
+
+def test_tablet_deep_discharge_overrides_suspend():
+    cfg = _cfg(kind=C.KIND_TABLET, tablet_low=40, tablet_high=80,
+               battery_entity="sensor.batt")
+    d = E.evaluate(
+        cfg,
+        _state(switch_state="off", battery_pct=12, suspended=True),
+        _ctx(),
+    )
+    assert d.desired_switch_state == C.DESIRED_ON
+    assert "deep_discharge_guard" in d.blockers
+    assert "policy_suspended_bypassed" in d.blockers
+
+
+def test_tablet_low_battery_overrides_suspend_for_charging():
+    cfg = _cfg(kind=C.KIND_TABLET, tablet_low=40, tablet_high=80,
+               battery_entity="sensor.batt")
+    d = E.evaluate(
+        cfg,
+        _state(switch_state="off", battery_pct=35, suspended=True),
+        _ctx(),
+    )
+    assert d.desired_switch_state == C.DESIRED_ON
+    assert "policy_suspended_bypassed" in d.blockers
+
+
 # --------------------------------------------------------------- blind charger
 
 

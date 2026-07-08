@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.3.2
+
+- FLEET-170: Tablet/dashboard charging fail-safe now bypasses policy suspend
+  when battery is unknown/unavailable or below the deep-discharge guard, so
+  transient suspend states cannot leave the tablet stuck off.
+- Keep the non-latching auto-suspend guard for other devices and tablet
+  non-charging paths, while skipping optional display service calls when the
+  display target itself is unknown/unavailable.
+
 ## 0.3.1
 
 - FLEET-220: Bias-Light policy now follows the TV stack instead of broad

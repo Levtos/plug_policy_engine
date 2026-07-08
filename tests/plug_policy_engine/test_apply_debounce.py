@@ -83,3 +83,58 @@ def test_reassert_history_prunes_old_attempts():
     )
     assert history == [("turn_on", 700.0)]
     assert should_suspend is False
+
+
+def test_unavailable_display_target_blocks_service_call():
+    assert G.service_target_state_available("unavailable") is False
+    assert G.service_target_state_available("unknown") is False
+    assert G.service_target_state_available(None) is False
+    assert G.service_target_state_available("off") is True
+
+
+def test_tablet_unknown_battery_turn_on_does_not_auto_suspend():
+    assert G.allows_auto_suspend_for_reassert(
+        kind="tablet",
+        target_service="turn_on",
+        battery_pct="unavailable",
+        tablet_low=40,
+    ) is False
+    assert G.allows_auto_suspend_for_reassert(
+        kind="tablet",
+        target_service="turn_on",
+        battery_pct="unknown",
+        tablet_low=40,
+    ) is False
+
+
+def test_tablet_low_battery_turn_on_does_not_auto_suspend():
+    assert G.allows_auto_suspend_for_reassert(
+        kind="tablet",
+        target_service="turn_on",
+        battery_pct=35,
+        tablet_low=40,
+    ) is False
+
+
+def test_tablet_not_needing_charge_allows_auto_suspend():
+    assert G.allows_auto_suspend_for_reassert(
+        kind="tablet",
+        target_service="turn_off",
+        battery_pct=85,
+        tablet_low=40,
+    ) is True
+    assert G.allows_auto_suspend_for_reassert(
+        kind="tablet",
+        target_service="turn_on",
+        battery_pct=60,
+        tablet_low=40,
+    ) is True
+
+
+def test_appliance_unknown_power_still_allows_auto_suspend_guard():
+    assert G.allows_auto_suspend_for_reassert(
+        kind="appliance",
+        target_service="turn_on",
+        battery_pct="unknown",
+        tablet_low=40,
+    ) is True
