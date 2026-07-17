@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.3
+
+- Add the Aqara M3 Hub power output (`switch.smart_power_strip_usb_1`) to the
+  Benni profile with the existing `AO` policy so an available plug observed as
+  off is restored by the unchanged Always-On contract.
+
 ## 0.3.2
 
 - FLEET-170: Tablet/dashboard charging fail-safe now bypasses policy suspend

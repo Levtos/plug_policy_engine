@@ -614,6 +614,13 @@ _PROFILE_DEVICES: dict[str, tuple[ProfileDevice, ...]] = {
             values={},
         ),
         ProfileDevice(
+            name="Aqara M3 Hub",
+            switch_entity="switch.smart_power_strip_usb_1",
+            policy="AO",
+            kind="generic",
+            values={},
+        ),
+        ProfileDevice(
             name="Duftstecker Kueche",
             switch_entity="switch.kitchen_diffuser_plug",
             policy="SC",

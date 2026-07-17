@@ -21,6 +21,7 @@ import types
 from functools import wraps
 
 import pytest
+import pp_engine as engine_module
 
 
 def _run(coro_fn):
@@ -260,6 +261,28 @@ def test_profile_device_prefill_uses_existing_einhornzentrale_entities_only():
     assert by_switch["switch.wohnbereich_steckdose_tv"]["power_entity"] == (
         "sensor.benni_master_tv"
     )
+
+
+def test_profile_m3_plug_uses_existing_ao_contract_when_off():
+    hass = _FakeHass(entity_ids=["switch.smart_power_strip_usb_1"])
+    devices = suggest_module.profile_device_prefill(hass)
+
+    assert devices == [{
+        "device_id": "smart_power_strip_usb_1",
+        "name": "Aqara M3 Hub",
+        "switch_entity": "switch.smart_power_strip_usb_1",
+        "policy": "AO",
+        "kind": "generic",
+    }]
+
+    device = devices[0]
+    decision = engine_module.evaluate(
+        engine_module.DeviceConfig(**device),
+        engine_module.DeviceState(switch_state="off"),
+        engine_module.GlobalContext(),
+    )
+    assert decision.desired_switch_state == "on"
+    assert decision.reason == "AO: must always be on"
 
 
 def test_profile_device_prefill_prefers_household_master_for_household_plugs():
