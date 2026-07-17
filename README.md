@@ -158,7 +158,8 @@ Die Decision-Engine läuft ohne Home-Assistant-Mock. Abgedeckt:
 - `bei_eltern` löst keine Away-Cuts aus
 - `abwesend` + idle appliance → off; aktiv → no action
 - power unavailable → geschützt
-- AO/CS off bei HA-Start → on
+- AO/CS off bei HA-Start, Zustandswechsel oder Reconnect → on; throttled
+  re-asserts werden für diese kritischen `turn_on`-Pfade nicht suspendiert
 - PC aktiv → niemals off; PC idle + sleep → off; PC manual-on cooldown
 - Tablet <40 → on; ≥80 → off; unavailable → on; <20 % deep-discharge
 - Bias light folgt TV-/Streaming-Kontext und TV-Gaming, nicht PC-Gaming

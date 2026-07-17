@@ -138,3 +138,33 @@ def test_appliance_unknown_power_still_allows_auto_suspend_guard():
         battery_pct="unknown",
         tablet_low=40,
     ) is True
+
+
+def test_ao_turn_on_never_auto_suspends_recovery():
+    assert G.allows_auto_suspend_for_reassert(
+        kind="generic",
+        target_service="turn_on",
+        battery_pct="unknown",
+        tablet_low=40,
+        policy="AO",
+    ) is False
+
+
+def test_cs_turn_on_never_auto_suspends_recovery():
+    assert G.allows_auto_suspend_for_reassert(
+        kind="generic",
+        target_service="turn_on",
+        battery_pct=None,
+        tablet_low=40,
+        policy="CS",
+    ) is False
+
+
+def test_ao_opposite_direction_keeps_non_latching_guard():
+    assert G.allows_auto_suspend_for_reassert(
+        kind="generic",
+        target_service="turn_off",
+        battery_pct=None,
+        tablet_low=40,
+        policy="AO",
+    ) is True

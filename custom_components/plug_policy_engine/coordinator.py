@@ -78,10 +78,9 @@ _LOGGER = logging.getLogger(__name__)
 
 _PROFILE_POWER_BY_SWITCH = {
     "switch.living_pc_plug": ("sensor.benni_master_pc",),
-    "switch.living_denon_plug_denon": ("sensor.benni_master_denon",),
+    "switch.living_denon_plug": ("sensor.benni_master_denon",),
     "switch.living_ps5_plug": ("sensor.benni_master_ps5",),
-    "switch.living_switch_plug": ("sensor.benni_master_switch",),
-    "switch.wohnbereich_steckdose_tv": ("sensor.benni_master_tv",),
+    "switch.living_tv_plug": ("sensor.benni_master_tv",),
     "switch.kitchen_washing_machine_plug": ("sensor.benni_master_household_plug",),
     "switch.kitchen_dryer_plug": ("sensor.benni_master_household_plug",),
     "switch.kitchen_dishwasher_plug": ("sensor.benni_master_household_plug",),
@@ -484,6 +483,7 @@ class PlugPolicyCoordinator:
                 target_service=target,
                 battery_pct=st.battery_pct,
                 tablet_low=cfg.tablet_low,
+                policy=cfg.policy,
             ):
                 st.suspended = True
                 self._auto_suspended_by_device[cfg.device_id] = {
@@ -502,9 +502,11 @@ class PlugPolicyCoordinator:
             elif should_suspend:
                 _LOGGER.warning(
                     "plug_policy_engine: kept %s active despite repeated %s commands; "
-                    "tablet charging fail-safe is active",
+                    "fail-safe turn-on path is active (policy=%s, kind=%s)",
                     cfg.device_id,
                     target,
+                    cfg.policy,
+                    cfg.kind,
                 )
             self.last_action[cfg.device_id] = {
                 "action": target,

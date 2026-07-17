@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.3.3
+
+- CONTROL-38: add the Einhornzentrale Aqara M3 Hub outlet
+  (`switch.smart_power_strip_usb_1`) as an AO profile device and the DualSense
+  charger as CS.
+- Replace stale Benni profile bindings for Denon and OLED TV with their current
+  entity IDs; remove retired H14 and Nintendo plug candidates from prefill.
+- Keep throttled AO/CS `turn_on` reconciliation active through prolonged
+  unavailable/off periods instead of auto-suspending it after repeated
+  re-asserts. This allows critical supplies to recover after HA restart,
+  upstream power loss, and integration reconnect.
+- Apply the same absolute AO reconcile contract to wake-signal-only devices;
+  they no longer wait for the next HA restart after an observed off state.
+- Document the complete Einhornzentrale physical plug/power-switch inventory,
+  current coverage, proposed directives, operational verification, and Wiki
+  impact.
+
 ## 0.3.2
 
 - FLEET-170: Tablet/dashboard charging fail-safe now bypasses policy suspend

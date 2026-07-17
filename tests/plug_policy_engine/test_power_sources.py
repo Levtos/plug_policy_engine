@@ -471,14 +471,15 @@ async def test_kitchen_diffuser_command_cooldown_survives_brief_target_state():
 
 
 @smoke._run
-async def test_repeated_non_latch_reasserts_auto_suspend_device():
+async def test_repeated_non_latch_reasserts_auto_suspend_non_ao_device():
     mod = _load_coordinator_module()
     clock = {"ts": 0}
     original_utcnow = mod.dt_util.utcnow
     mod.dt_util.utcnow = lambda: datetime(2026, 6, 14) + timedelta(seconds=clock["ts"])
     try:
         hass = _FakeHass({
-            "switch.flaky_plug": _FakeState("off"),
+            "switch.flaky_plug": _FakeState("on"),
+            "sensor.flaky_battery": _FakeState("85"),
         })
         entry = _FakeEntry({
             "enable_control": False,
@@ -487,6 +488,47 @@ async def test_repeated_non_latch_reasserts_auto_suspend_device():
                     "device_id": "flaky_plug",
                     "name": "Flaky Plug",
                     "switch_entity": "switch.flaky_plug",
+                    "policy": "SPECIAL",
+                    "kind": "tablet",
+                    "battery_entity": "sensor.flaky_battery",
+                },
+            ],
+        })
+        coord = mod.PlugPolicyCoordinator(hass, entry)
+
+        for ts in (0, 60, 120, 180, 240):
+            clock["ts"] = ts
+            hass.states._states["switch.flaky_plug"] = _FakeState("on")
+            await coord.async_apply_now("flaky_plug")
+
+        assert [call["service"] for call in hass.services.calls] == ["turn_off"] * 5
+        assert coord.states["flaky_plug"].suspended is True
+
+        clock["ts"] = 300
+        await coord.async_apply_now("flaky_plug")
+
+        assert [call["service"] for call in hass.services.calls] == ["turn_off"] * 5
+    finally:
+        mod.dt_util.utcnow = original_utcnow
+
+
+@smoke._run
+async def test_repeated_ao_turn_on_reasserts_never_suspend_recovery():
+    mod = _load_coordinator_module()
+    clock = {"ts": 0}
+    original_utcnow = mod.dt_util.utcnow
+    mod.dt_util.utcnow = lambda: datetime(2026, 6, 14) + timedelta(seconds=clock["ts"])
+    try:
+        hass = _FakeHass({
+            "switch.critical_supply": _FakeState("off"),
+        })
+        entry = _FakeEntry({
+            "enable_control": False,
+            "devices": [
+                {
+                    "device_id": "critical_supply",
+                    "name": "Critical Supply",
+                    "switch_entity": "switch.critical_supply",
                     "policy": "AO",
                     "kind": "generic",
                 },
@@ -496,15 +538,11 @@ async def test_repeated_non_latch_reasserts_auto_suspend_device():
 
         for ts in (0, 60, 120, 180, 240):
             clock["ts"] = ts
-            hass.states._states["switch.flaky_plug"] = _FakeState("off")
-            await coord.async_apply_now("flaky_plug")
+            hass.states._states["switch.critical_supply"] = _FakeState("off")
+            await coord.async_apply_now("critical_supply")
 
         assert [call["service"] for call in hass.services.calls] == ["turn_on"] * 5
-        assert coord.states["flaky_plug"].suspended is True
-
-        clock["ts"] = 300
-        await coord.async_apply_now("flaky_plug")
-
-        assert [call["service"] for call in hass.services.calls] == ["turn_on"] * 5
+        assert coord.states["critical_supply"].suspended is False
+        assert coord.decisions["critical_supply"].desired_switch_state == "on"
     finally:
         mod.dt_util.utcnow = original_utcnow

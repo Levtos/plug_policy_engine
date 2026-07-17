@@ -290,9 +290,12 @@ def evaluate(
 
     # Wake-signal-only devices (coffee maker) report decisions but never schedule cuts.
     if cfg.wake_signal_only or cfg.kind == KIND_COFFEE:
-        # Coffee maker is AO → just ensure on at startup
-        if cfg.policy == POLICY_AO and ha_just_started and state.switch_state != "on":
-            return make(DESIRED_ON, "AO startup ensure-on (wake indicator)")
+        # AO remains an absolute supply contract even for a wake indicator:
+        # reconcile every observed off/unavailable state, not only HA startup.
+        if cfg.policy == POLICY_AO:
+            return stable_off_gate(
+                _decide_ao(cfg, state, ha_just_started, make, label="AO wake indicator")
+            )
         return make(DESIRED_KEEP, "wake-signal-only device, no schedule action")
 
     # Device-kind specialisations (these may short-circuit policy)

@@ -463,6 +463,20 @@ def test_coffee_maker_is_wake_signal_only():
     assert "wake indicator" in d.reason
 
 
+def test_ao_coffee_maker_reconciles_manual_off_after_startup():
+    cfg = _cfg(kind=C.KIND_COFFEE, policy=C.POLICY_AO)
+    d = E.evaluate(cfg, _state(switch_state="off"), _ctx())
+    assert d.desired_switch_state == C.DESIRED_ON
+    assert "must always be on" in d.reason
+
+
+def test_ao_coffee_maker_reconciles_unavailable_after_startup():
+    cfg = _cfg(kind=C.KIND_COFFEE, policy=C.POLICY_AO)
+    d = E.evaluate(cfg, _state(switch_state="unavailable"), _ctx())
+    assert d.desired_switch_state == C.DESIRED_ON
+    assert "ensure on" in d.reason
+
+
 # --------------------------------------------------------------- registry cleanup
 
 

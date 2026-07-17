@@ -215,18 +215,18 @@ def test_profile_device_prefill_uses_existing_einhornzentrale_entities_only():
         "switch.living_pc_plug",
         "sensor.benni_master_pc",
         "sensor.living_pc_plug_power_atomic",
-        "switch.living_denon_plug_denon",
+        "switch.living_denon_plug",
         "sensor.benni_master_denon",
-        "sensor.living_denon_plug_power_atomic",
-        "switch.hall_h14_pro_plug",
-        "sensor.hall_h14_pro_plug_power",
+        "sensor.living_denon_plug_power",
         "switch.kitchen_dishwasher_plug",
         "sensor.benni_device_kitchen_dishwasher",
         "sensor.kitchen_dishwasher_plug_power_atomic",
         "switch.kitchen_diffuser_plug",
-        "switch.wohnbereich_steckdose_tv",
+        "switch.living_tv_plug",
         "sensor.benni_master_tv",
-        "sensor.living_tv_plug_power_atomic",
+        "sensor.living_tv_plug_power",
+        "switch.smart_power_strip_dualsense",
+        "switch.smart_power_strip_usb_1",
         "switch.living_subwoofer_plug",
         "switch.kitchen_diffuser_plug_child_lock",
     ])
@@ -235,21 +235,19 @@ def test_profile_device_prefill_uses_existing_einhornzentrale_entities_only():
 
     assert set(by_switch) == {
         "switch.living_pc_plug",
-        "switch.living_denon_plug_denon",
-        "switch.hall_h14_pro_plug",
+        "switch.living_denon_plug",
         "switch.kitchen_dishwasher_plug",
         "switch.kitchen_diffuser_plug",
-        "switch.wohnbereich_steckdose_tv",
+        "switch.smart_power_strip_dualsense",
+        "switch.living_tv_plug",
+        "switch.smart_power_strip_usb_1",
     }
     assert by_switch["switch.living_pc_plug"]["power_entity"] == (
         "sensor.benni_master_pc"
     )
     assert by_switch["switch.living_pc_plug"]["kind"] == "pc"
-    assert by_switch["switch.living_denon_plug_denon"]["power_entity"] == (
+    assert by_switch["switch.living_denon_plug"]["power_entity"] == (
         "sensor.benni_master_denon"
-    )
-    assert by_switch["switch.hall_h14_pro_plug"]["power_entity"] == (
-        "sensor.hall_h14_pro_plug_power"
     )
     assert by_switch["switch.kitchen_diffuser_plug"]["allowed_contexts"] == [
         "morning", "day", "evening",
@@ -257,16 +255,16 @@ def test_profile_device_prefill_uses_existing_einhornzentrale_entities_only():
     assert by_switch["switch.kitchen_dishwasher_plug"]["power_entity"] == (
         "sensor.benni_device_kitchen_dishwasher"
     )
-    assert by_switch["switch.wohnbereich_steckdose_tv"]["power_entity"] == (
+    assert by_switch["switch.living_tv_plug"]["power_entity"] == (
         "sensor.benni_master_tv"
     )
+    assert by_switch["switch.smart_power_strip_dualsense"]["policy"] == "CS"
+    assert by_switch["switch.smart_power_strip_usb_1"]["policy"] == "AO"
 
 
 def test_profile_device_prefill_prefers_household_master_for_household_plugs():
     hass = _FakeHass(entity_ids=[
-        "switch.hall_h14_pro_plug",
         "sensor.benni_master_household_plug",
-        "sensor.hall_h14_pro_plug_power",
         "switch.kitchen_dishwasher_plug",
         "sensor.benni_device_kitchen_dishwasher",
         "sensor.kitchen_dishwasher_plug_power",
@@ -278,9 +276,6 @@ def test_profile_device_prefill_prefers_household_master_for_household_plugs():
     devices = suggest_module.profile_device_prefill(hass)
     by_switch = {d["switch_entity"]: d for d in devices}
 
-    assert by_switch["switch.hall_h14_pro_plug"]["power_entity"] == (
-        "sensor.hall_h14_pro_plug_power"
-    )
     assert by_switch["switch.kitchen_dishwasher_plug"]["power_entity"] == (
         "sensor.benni_master_household_plug"
     )
@@ -428,8 +423,8 @@ async def test_prefill_devices_confirms_and_stores_new_profile_devices():
     hass = _FakeHass(entity_ids=[
         "switch.living_pc_plug",
         "sensor.living_pc_plug_power_atomic",
-        "switch.living_denon_plug_denon",
-        "sensor.living_denon_plug_power_atomic",
+        "switch.living_denon_plug",
+        "sensor.living_denon_plug_power",
     ])
     entry = _FakeEntry(data={"enable_control": False}, options={"devices": []})
     flow = _FakeFlow()
@@ -445,10 +440,10 @@ async def test_prefill_devices_confirms_and_stores_new_profile_devices():
     devices = flow.created_entry["data"]["devices"]
     assert [d["switch_entity"] for d in devices] == [
         "switch.living_pc_plug",
-        "switch.living_denon_plug_denon",
+        "switch.living_denon_plug",
     ]
     assert devices[0]["power_entity"] == "sensor.living_pc_plug_power_atomic"
-    assert devices[1]["power_entity"] == "sensor.living_denon_plug_power_atomic"
+    assert devices[1]["power_entity"] == "sensor.living_denon_plug_power"
     assert flow.created_entry["data"]["enable_control"] is False
 
 
@@ -457,8 +452,8 @@ async def test_prefill_devices_skips_existing_switches():
     hass = _FakeHass(entity_ids=[
         "switch.living_pc_plug",
         "sensor.living_pc_plug_power_atomic",
-        "switch.living_denon_plug_denon",
-        "sensor.living_denon_plug_power_atomic",
+        "switch.living_denon_plug",
+        "sensor.living_denon_plug_power",
     ])
     existing = {
         "device_id": "living_pc_plug",
@@ -473,7 +468,7 @@ async def test_prefill_devices_skips_existing_switches():
     devices = flow.created_entry["data"]["devices"]
     assert [d["switch_entity"] for d in devices] == [
         "switch.living_pc_plug",
-        "switch.living_denon_plug_denon",
+        "switch.living_denon_plug",
     ]
     assert devices[0] == existing
 

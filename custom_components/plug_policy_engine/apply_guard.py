@@ -57,13 +57,17 @@ def allows_auto_suspend_for_reassert(
     target_service: str,
     battery_pct: Any,
     tablet_low: int,
+    policy: str | None = None,
 ) -> bool:
-    """Return False for tablet charging paths that must fail safe.
+    """Return False for supply paths that must keep retrying fail-safe.
 
-    Repeated turn_on commands for a tablet with low or unknown battery should
-    not auto-suspend the policy: that would block the recovery path FLEET-170
-    is about. Other device kinds and turn_off paths keep the non-latching guard.
+    AO/CS supplies must recover after an outage or reconnect, so a sequence of
+    throttled ``turn_on`` re-asserts may never latch the policy into suspend.
+    The same applies to tablet charging with a low or unknown battery. Other
+    device kinds and turn-off paths keep the non-latching guard.
     """
+    if target_service == "turn_on" and str(policy or "").upper() in {"AO", "CS"}:
+        return False
     if kind != "tablet" or target_service != "turn_on":
         return True
     battery = _battery_int(battery_pct)

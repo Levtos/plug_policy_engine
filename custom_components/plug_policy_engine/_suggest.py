@@ -202,12 +202,9 @@ _PROFILE_POWER_ENTITIES: dict[str, dict[str, tuple[str, ...]]] = {
             "sensor.benni_master_pc",
             "sensor.living_pc_plug_power",
         ),
-        "living_denon_plug_denon": (
+        "living_denon_plug": (
             "sensor.benni_master_denon",
-            "sensor.living_denon_plug_power_atomic",
-        ),
-        "hall_h14_pro_plug": (
-            "sensor.hall_h14_pro_plug_power",
+            "sensor.living_denon_plug_power",
         ),
         "kitchen_washing_machine_plug": (
             "sensor.benni_master_household_plug",
@@ -235,13 +232,9 @@ _PROFILE_POWER_ENTITIES: dict[str, dict[str, tuple[str, ...]]] = {
             "sensor.benni_master_ps5",
             "sensor.living_ps5_plug_power",
         ),
-        "living_switch_plug": (
-            "sensor.benni_master_switch",
-            "sensor.living_switch_plug_power",
-        ),
-        "wohnbereich_steckdose_tv": (
+        "living_tv_plug": (
             "sensor.benni_master_tv",
-            "sensor.living_tv_plug_power_atomic",
+            "sensor.living_tv_plug_power",
         ),
     },
 }
@@ -404,6 +397,8 @@ _PRESETS: dict[str, DevicePreset] = {
             "wake_signal_only": False,
         },
     ),
+    # Add-flow compatibility only; the retired switch is not part of Benni's
+    # automatic profile prefill anymore.
     "living_switch_plug": DevicePreset(
         slug="living_switch_plug",
         label="Switch safe defaults",
@@ -451,34 +446,6 @@ _PRESETS: dict[str, DevicePreset] = {
         label="Denon AVR safe defaults",
         values={
             "kind": "denon",
-            "active_threshold": 8.0,
-            "idle_threshold": 3.0,
-            "deadband_lower": 3.0,
-            "deadband_upper": 8.0,
-            "unknown_behavior": "assume_active",
-            "never_cut_when_active": True,
-            "wake_signal_only": False,
-        },
-    ),
-    "living_denon_plug_denon": DevicePreset(
-        slug="living_denon_plug_denon",
-        label="Denon AVR safe defaults",
-        values={
-            "kind": "denon",
-            "active_threshold": 8.0,
-            "idle_threshold": 3.0,
-            "deadband_lower": 3.0,
-            "deadband_upper": 8.0,
-            "unknown_behavior": "assume_active",
-            "never_cut_when_active": True,
-            "wake_signal_only": False,
-        },
-    ),
-    "wohnbereich_steckdose_tv": DevicePreset(
-        slug="wohnbereich_steckdose_tv",
-        label="TV safe defaults",
-        values={
-            "kind": "generic",
             "active_threshold": 8.0,
             "idle_threshold": 3.0,
             "deadband_lower": 3.0,
@@ -564,26 +531,10 @@ _PROFILE_DEVICES: dict[str, tuple[ProfileDevice, ...]] = {
         ),
         ProfileDevice(
             name="Denon AVR",
-            switch_entity="switch.living_denon_plug_denon",
+            switch_entity="switch.living_denon_plug",
             policy="HB",
             kind="denon",
-            values={"power_entity": "sensor.living_denon_plug_power_atomic"},
-        ),
-        ProfileDevice(
-            name="H14 Pro Dock",
-            switch_entity="switch.hall_h14_pro_plug",
-            policy="HB",
-            kind="h14_dock",
-            values={
-                "power_entity": "sensor.hall_h14_pro_plug_power",
-                "active_threshold": 10.0,
-                "idle_threshold": 5.0,
-                "deadband_lower": 5.0,
-                "deadband_upper": 10.0,
-                "unknown_behavior": "assume_active",
-                "never_cut_when_active": True,
-                "wake_signal_only": False,
-            },
+            values={},
         ),
         ProfileDevice(
             name="Waschmaschine",
@@ -635,18 +586,25 @@ _PROFILE_DEVICES: dict[str, tuple[ProfileDevice, ...]] = {
             values={},
         ),
         ProfileDevice(
-            name="Nintendo Switch",
-            switch_entity="switch.living_switch_plug",
-            policy="AO",
+            name="PS5 Controller Charger",
+            switch_entity="switch.smart_power_strip_dualsense",
+            policy="CS",
             kind="generic",
             values={},
         ),
         ProfileDevice(
             name="OLED TV",
-            switch_entity="switch.wohnbereich_steckdose_tv",
+            switch_entity="switch.living_tv_plug",
             policy="AO",
             kind="generic",
-            values={"power_entity": "sensor.living_tv_plug_power_atomic"},
+            values={},
+        ),
+        ProfileDevice(
+            name="Aqara M3 Hub",
+            switch_entity="switch.smart_power_strip_usb_1",
+            policy="AO",
+            kind="generic",
+            values={},
         ),
     ),
 }
