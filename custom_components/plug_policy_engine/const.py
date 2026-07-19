@@ -129,6 +129,7 @@ CONF_MEDIA = "media_context_entity"
 CONF_GAMING_SOURCE = "gaming_source_entity"
 CONF_ENTERTAINMENT = "entertainment_active_entity"
 CONF_ACTIVITY = "activity_entity"
+CONF_TV_ACTIVE = "tv_active_entity"
 
 GLOBAL_PREFILL: Final[dict[str, str]] = {
     CONF_PRESENCE: "sensor.benni_combined_context_presence_personal",
@@ -138,6 +139,7 @@ GLOBAL_PREFILL: Final[dict[str, str]] = {
     CONF_GAMING_SOURCE: "sensor.benni_media_state_gaming_source",
     CONF_ENTERTAINMENT: "binary_sensor.benni_media_state_entertainment_active",
     CONF_ACTIVITY: "sensor.benni_combined_context_activity_state",
+    CONF_TV_ACTIVE: "sensor.benni_master_tv",
 }
 
 LEGACY_GLOBAL_SOURCE_MAP: Final[dict[str, str]] = {

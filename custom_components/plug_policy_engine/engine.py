@@ -46,6 +46,9 @@ class GlobalContext:
     gaming_source: Optional[str] = None  # e.g. "tv", "pc", "none"
     entertainment_active: Optional[bool] = None
     activity: Optional[str] = None
+    # Real TV truth (core_devices master). False = TV verifiably off,
+    # None = unbound/unknown/unavailable → fail-open (no gating).
+    tv_active: Optional[bool] = None
     now_ts: float = 0.0                  # seconds since epoch (testable)
 
     @property
@@ -242,6 +245,7 @@ def evaluate(
         "gaming_source": ctx.gaming_source,
         "entertainment_active": ctx.entertainment_active,
         "activity": ctx.activity,
+        "tv_active": ctx.tv_active,
     }
 
     def make(desired: str, reason: str, extra_blockers: list[str] | None = None) -> Decision:
@@ -472,6 +476,18 @@ def _decide_bias_light(cfg, state, ctx, make) -> Decision:
     want_on = media in {"movie", "streaming", "tv", "video"} or (
         media == "gaming" and gaming_source == "tv"
     )
+    if want_on and ctx.tv_active is False:
+        # control#35: the TV master reports a clean off, but the TV-stack
+        # context can trail it by ~20-30 s (PS5 shutdown tail + feeder
+        # debounce). That stale signal must not (re)arm the bias light —
+        # a real TV-on lifts this gate immediately via the master binding.
+        if state.switch_state == "off":
+            return make(
+                DESIRED_KEEP,
+                "bias light: TV off — stale TV stack tail, already off",
+                ["tv=off"],
+            )
+        return make(DESIRED_OFF, "bias light: TV off — stale TV stack tail", ["tv=off"])
     if want_on:
         if state.switch_state == "on":
             return make(DESIRED_KEEP, "bias light: TV stack active, already on")

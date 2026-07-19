@@ -273,6 +273,50 @@ def test_bias_light_sleep_blocks_entertainment_active():
     assert "bio=sleep" in d.blockers
 
 
+def test_bias_light_tv_off_blocks_stale_tv_stack_tail():
+    # control#35: after a real TV-off the media context can trail as
+    # gaming:tv for ~20-30 s (PS5 shutdown tail) — must not re-arm the plug.
+    cfg = _cfg(kind=C.KIND_BIAS_LIGHT, policy=C.POLICY_HB)
+    d = E.evaluate(cfg, _state(switch_state="off"),
+                   _ctx(media_context="gaming", gaming_source="tv",
+                        entertainment_active=True, tv_active=False))
+    assert d.desired_switch_state == C.DESIRED_KEEP
+    assert "tv=off" in d.blockers
+
+
+def test_bias_light_tv_off_turns_off_when_still_on():
+    cfg = _cfg(kind=C.KIND_BIAS_LIGHT, policy=C.POLICY_HB)
+    d = E.evaluate(cfg, _state(switch_state="on"),
+                   _ctx(media_context="gaming", gaming_source="tv",
+                        entertainment_active=True, tv_active=False))
+    assert d.desired_switch_state == C.DESIRED_OFF
+    assert "tv=off" in d.blockers
+
+
+def test_bias_light_tv_off_blocks_movie_context_too():
+    cfg = _cfg(kind=C.KIND_BIAS_LIGHT, policy=C.POLICY_HB)
+    d = E.evaluate(cfg, _state(switch_state="on"),
+                   _ctx(media_context="movie", tv_active=False))
+    assert d.desired_switch_state == C.DESIRED_OFF
+
+
+def test_bias_light_tv_on_lifts_gate_immediately():
+    cfg = _cfg(kind=C.KIND_BIAS_LIGHT, policy=C.POLICY_HB)
+    d = E.evaluate(cfg, _state(switch_state="off"),
+                   _ctx(media_context="gaming", gaming_source="tv",
+                        entertainment_active=True, tv_active=True))
+    assert d.desired_switch_state == C.DESIRED_ON
+
+
+def test_bias_light_tv_unknown_stays_fail_open():
+    # Unbound/degraded TV master must not change behavior (no false offs).
+    cfg = _cfg(kind=C.KIND_BIAS_LIGHT, policy=C.POLICY_HB)
+    d = E.evaluate(cfg, _state(switch_state="off"),
+                   _ctx(media_context="gaming", gaming_source="tv",
+                        entertainment_active=True, tv_active=None))
+    assert d.desired_switch_state == C.DESIRED_ON
+
+
 # --------------------------------------------------------------- diffuser
 
 

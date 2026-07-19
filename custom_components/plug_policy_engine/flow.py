@@ -55,6 +55,7 @@ from .const import (
     CONF_KIND,
     CONF_MANUAL_COOLDOWN,
     CONF_MEDIA,
+    CONF_TV_ACTIVE,
     CONF_NAME,
     CONF_NEVER_CUT_ACTIVE,
     CONF_POLICY,
@@ -122,6 +123,8 @@ def _globals_schema(defaults: dict[str, Any] | None = None) -> vol.Schema:
             _entity(["binary_sensor", "input_boolean"]),
         _opt_entity(CONF_ACTIVITY, d.get(CONF_ACTIVITY) or GLOBAL_PREFILL[CONF_ACTIVITY]):
             _entity(["input_select", "sensor"]),
+        _opt_entity(CONF_TV_ACTIVE, d.get(CONF_TV_ACTIVE) or GLOBAL_PREFILL[CONF_TV_ACTIVE]):
+            _entity(["binary_sensor", "sensor"]),
         vol.Optional(CONF_ENABLE_CONTROL, default=d.get(CONF_ENABLE_CONTROL, False)): bool,
         vol.Optional(CONF_SCAN_INTERVAL, default=d.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)):
             vol.All(int, vol.Range(min=5, max=600)),
