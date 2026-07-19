@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.3.4
+
+- control#35: Bias-Light re-armed itself for ~20-30 s after a real TV-off
+  because the TV-stack context (`gaming`/`gaming_source=tv`) trails the TV
+  master during the PS5 shutdown tail (+ feeder debounce), overriding any
+  external off. The bias decision now consumes the real TV truth via a new
+  optional global binding `tv_active_entity` (prefill
+  `sensor.benni_master_tv`): a clean master `off` gates `want_on`
+  (blocker `tv=off`), a real TV-on lifts the gate immediately
+  (event-driven binding), and `unknown`/`unavailable`/unbound stays
+  fail-open (unchanged behavior, no false offs on master dropouts).
+- New binding is exposed in the globals options flow (strings + de/en
+  translations) and in the decision/context observability attributes.
+
 ## 0.3.3
 
 - Add the Aqara M3 Hub power output (`switch.smart_power_strip_usb_1`) to the

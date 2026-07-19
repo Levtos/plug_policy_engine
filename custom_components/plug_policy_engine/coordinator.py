@@ -36,6 +36,7 @@ from .const import (
     CONF_ENABLE_CONTROL,
     CONF_ENTERTAINMENT,
     CONF_GAMING_SOURCE,
+    CONF_TV_ACTIVE,
     CONF_IDLE_THRESHOLD,
     CONF_KIND,
     CONF_MANUAL_COOLDOWN,
@@ -121,6 +122,7 @@ class PlugPolicyCoordinator:
             "gaming_source": self._global_entity(data, CONF_GAMING_SOURCE),
             "entertainment": self._global_entity(data, CONF_ENTERTAINMENT),
             "activity": self._global_entity(data, CONF_ACTIVITY),
+            "tv_active": self._global_entity(data, CONF_TV_ACTIVE),
         }
 
         self.configs: dict[str, DeviceConfig] = {}
@@ -307,6 +309,21 @@ class PlugPolicyCoordinator:
             return None
         return s.lower() in ("on", "true", "1", "active", "playing")
 
+    def _read_tv_active(self, entity_id: str | None) -> bool | None:
+        """TV-Master-Wahrheit (control#35): nur ein sauberes Aus blockt.
+
+        ``off``/``standby`` → False; ``unknown``/``unavailable``/``degraded``/
+        ungebunden → None (fail-open, kein Fehl-Off bei Master-Dropouts);
+        alles andere (``active``/``on``/``playing``) → True.
+        """
+        s = self._read_str(entity_id)
+        if s is None:
+            return None
+        v = s.lower()
+        if v in ("unknown", "unavailable", "degraded"):
+            return None
+        return v not in ("off", "standby")
+
     def _resolve_power_entity(self, cfg: DeviceConfig) -> str | None:
         if cfg.power_entity and self.hass.states.get(cfg.power_entity) is not None:
             return cfg.power_entity
@@ -326,6 +343,7 @@ class PlugPolicyCoordinator:
             gaming_source=self._read_str(self.global_entities["gaming_source"]),
             entertainment_active=self._read_bool(self.global_entities["entertainment"]),
             activity=self._read_str(self.global_entities["activity"]),
+            tv_active=self._read_tv_active(self.global_entities["tv_active"]),
             now_ts=dt_util.utcnow().timestamp(),
         )
 
@@ -361,6 +379,7 @@ class PlugPolicyCoordinator:
             "gaming_source": ctx.gaming_source,
             "entertainment_active": ctx.entertainment_active,
             "activity": ctx.activity,
+            "tv_active": ctx.tv_active,
         }
         for cfg in self.configs.values():
             await self._async_evaluate_one(cfg, ctx, ha_just_started=ha_just_started)
