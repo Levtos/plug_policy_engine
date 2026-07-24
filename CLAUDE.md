@@ -68,3 +68,13 @@ Eigene HACS-Custom-Integration. Foundation lebt in `bennis_toolbox`, dieses Modu
 - Cross-Modul-Inputs immer als HA-Entity-IDs konsumieren, keine Python-Imports
   aus anderen benni-Modulen.
 - Keine Domain-Umbenennung von `plug_policy_engine`.
+
+## UX-Frontend-Standard (verbindlich)
+
+Für jede UX-/Frontend-Arbeit gilt der verbindliche, fleet-weite UX-, Technologie- und
+Designstandard. Kanonische Quelle: ADR `ha-platform/control:docs/adr/0001-ux-frontend-standard.md`
+(Issue `control#58`). Kurzform: Svelte 5 · Vite · TypeScript · Bits UI · shadcn-svelte ·
+Tailwind · CSS Custom Properties · Lucide; Design "Graphite Dark – semantic accent system";
+zentrale UX = statisches Bundle + dünnes UX-Gateway (primär HA-Ingress); versionierte/typisierte
+Contracts. Details und Abweichungsprozess: `docs/ux-frontend-standard.md` und das ADR. Bestehende
+Regeln werden dadurch ergänzt, nie überschrieben oder entfernt.
